@@ -1,0 +1,16 @@
+# Git
+.git
+.gitignore
+
+# Environnements virtuels
+.venv/
+env/
+venv/
+
+# Caches Python et uv
+__pycache__/
+*.pyc
+.uv/
+
+# Fichiers de sortie générés localement
+actuai_mock_data/src/output/
