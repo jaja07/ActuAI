@@ -1,7 +1,7 @@
 import requests
 from sqlmodel import Session, select
-from actuai_backend.database.connection import engine, init_db
-from actuai_backend.database.models import DatalakePurchaseOrder
+from actuai_backend.src.database.connection import engine, init_db
+from actuai_backend.src.database.models import DatalakePurchaseOrder
 
 SAP_MOCK_URL = "http://localhost:8080/api/bapi"
 

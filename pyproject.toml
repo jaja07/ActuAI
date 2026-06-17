@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = []
 
-[workspace]
+[tool.uv.workspace]
 members = [
     "actuai_mock_data",
     "actuai_backend"
