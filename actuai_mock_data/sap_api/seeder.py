@@ -5,7 +5,7 @@ from sqlmodel import Session, create_engine, SQLModel
 
 # Imports relatifs à ton projet
 from actuai_mock_data.config import settings
-from actuai_mock_data.src.sap_api.model import (
+from actuai_mock_data.sap_api.model import (
     PurchaseOrder, 
     GoodsReceipt, 
     ProductionSchedule, 

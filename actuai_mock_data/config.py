@@ -1,9 +1,10 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import DirectoryPath, AnyHttpUrl
+from pydantic import AnyHttpUrl
+from pathlib import Path
 
 class Settings(BaseSettings):
-    mock_network_drive_dir: DirectoryPath
-    mock_excel_dir: DirectoryPath
+    mock_network_drive_dir: Path
+    mock_excel_dir: Path
     database_url: str
     webhook_target_url: AnyHttpUrl
 

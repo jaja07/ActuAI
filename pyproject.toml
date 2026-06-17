@@ -8,5 +8,6 @@ dependencies = []
 
 [workspace]
 members = [
-    "actuai_mock_data"
+    "actuai_mock_data",
+    "actuai_backend"
 ]

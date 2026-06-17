@@ -7,7 +7,7 @@ WORKDIR /app
 # Optimisations Python et déclaration du chemin source
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH="/app/actuai_mock_data/src"
+    PYTHONPATH="/app/actuai_mock_data/"
 
 # 1. Copie du fichier de dépendances (isolé pour optimiser le cache Docker)
 COPY actuai_mock_data/requirements.txt ./actuai_mock_data/
@@ -17,7 +17,7 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r actuai_mock_data/requirements.txt
 
 # 3. Copie du code source
-COPY actuai_mock_data/src/ ./actuai_mock_data/src/
+COPY actuai_mock_data/ ./actuai_mock_data/
 
 # Port et variables d'environnement par défaut
 EXPOSE 8080

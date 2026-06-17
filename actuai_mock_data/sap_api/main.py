@@ -3,7 +3,7 @@ from sqlmodel import Session, select, create_engine, SQLModel
 from typing import List
 
 from actuai_mock_data.config import settings
-from src.sap_api.model import (
+from actuai_mock_data.sap_api.model import (
     PurchaseOrder, 
     GoodsReceipt, 
     ProductionSchedule, 
