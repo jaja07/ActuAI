@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select, create_engine, SQLModel
 from typing import List
 
-from generators.emails import generate_supplier_emails
+from actuai_mock_data.generators.emails import generate_supplier_emails
 from actuai_mock_data.config import settings
 from actuai_mock_data.sap_api.model import (
     PurchaseOrder, 
