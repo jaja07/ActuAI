@@ -20,23 +20,44 @@ export default function App() {
   const [token, setToken] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(""); // success feedback after an action
 
   // --- login ---------------------------------------------------------------
   async function login(username, password) {
-    const form = new URLSearchParams({ username, password });
-    const res = await fetch(`${API}/api/auth/login`, { method: "POST", body: form });
-    if (!res.ok) { setError("Login failed"); return; }
-    const data = await res.json();
-    setToken(data.access_token);
     setError("");
+    try {
+      const form = new URLSearchParams({ username, password });
+      const res = await fetch(`${API}/api/auth/login`, { method: "POST", body: form });
+      if (!res.ok) {
+        // Surface the REAL reason instead of a generic message.
+        const detail = await res.json().catch(() => ({}));
+        setError(detail.detail || `Login failed (HTTP ${res.status})`);
+        return;
+      }
+      const data = await res.json();
+      setToken(data.access_token);
+    } catch {
+      // Network/proxy failure (e.g. backend not running on :8000).
+      setError("Cannot reach the API — is the backend up on :8000?");
+    }
   }
 
   // --- load pending tasks --------------------------------------------------
   async function loadTasks() {
-    const res = await fetch(`${API}/api/tasks`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) setTasks(await res.json());
+    try {
+      const res = await fetch(`${API}/api/tasks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        // Token expired/invalid: drop it and send the user back to login.
+        setToken(null);
+        setError("Session expired — please log in again.");
+        return;
+      }
+      if (res.ok) setTasks(await res.json());
+    } catch {
+      setError("Cannot reach the API to load tasks.");
+    }
   }
 
   // Reload tasks whenever we have a token (and every 10s after).
@@ -49,11 +70,30 @@ export default function App() {
 
   // --- approve / reject ----------------------------------------------------
   async function decide(taskId, action) {
-    await fetch(`${API}/api/tasks/${taskId}/${action}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    loadTasks(); // refresh the queue
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(`${API}/api/tasks/${taskId}/${action}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        setToken(null);
+        setError("Session expired — please log in again.");
+        return;
+      }
+      if (!res.ok) {
+        // CRITICAL: never fail silently. A 403 (wrong role), 409 (needs triage)
+        // or 502 (SAP write failed) must be shown; keep the task on screen.
+        const detail = await res.json().catch(() => ({}));
+        setError(detail.detail || `Action "${action}" failed (HTTP ${res.status})`);
+        return;
+      }
+      setNotice(`Task ${taskId} ${action === "approve" ? "approved" : "rejected"}.`);
+      loadTasks(); // refresh the queue
+    } catch {
+      setError(`Cannot reach the API to ${action} this task.`);
+    }
   }
 
   if (!token) return <Login onLogin={login} error={error} />;
@@ -61,6 +101,8 @@ export default function App() {
   return (
     <div style={{ maxWidth: 800, margin: "2rem auto", fontFamily: "system-ui" }}>
       <h1>ActuAI — Validation dashboard</h1>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {notice && <p style={{ color: "green" }}>{notice}</p>}
       <p>{tasks.length} draft(s) awaiting your review.</p>
       {tasks.map((t) => (
         <div key={t.id} style={{ border: "1px solid #ccc", borderRadius: 8, padding: 16, marginBottom: 12 }}>
@@ -69,7 +111,9 @@ export default function App() {
           <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflowX: "auto" }}>
             {JSON.stringify(t.payload, null, 2)}
           </pre>
-          <button onClick={() => decide(t.id, "approve")}>Approve → write to SAP</button>{" "}
+          <button onClick={() => decide(t.id, "approve")}>
+            {t.kind === "EMAIL_REPLY" ? "Approve → send client reply" : "Approve → write to SAP"}
+          </button>{" "}
           <button onClick={() => decide(t.id, "reject")}>Reject</button>
         </div>
       ))}
