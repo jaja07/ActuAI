@@ -50,7 +50,7 @@ def on_startup():
         # Refuse to boot insecurely in production. Fail fast, fail loud.
         raise RuntimeError("JWT_SECRET must be set in production!")
 
-    print("🚀 Démarrage du backend ActuAI...")
+    print("Démarrage du backend ActuAI...")
     log.info("Starting ActuAI backend (env=%s)", settings.ENV)
     init_db()
     seed_demo_users()

@@ -38,10 +38,12 @@ class SAPConnector:
     """A light, resilient HTTP client for the mock SAP BAPI."""
 
     def __init__(self, base_url: str | None = None):
+        """Use ``base_url`` if given, otherwise fall back to ``settings.BAPI_BASE_URL``."""
         self.base_url = (base_url or settings.BAPI_BASE_URL).rstrip("/")
 
     # ---- low-level GET with retry/backoff --------------------------------
     def _get(self, path: str, retries: int = 3) -> list[dict]:
+        """GET ``path`` off the BAPI, retrying with exponential backoff (1s, 2s, 4s...)."""
         url = f"{self.base_url}{path}"
         last_error: Exception | None = None
         for attempt in range(retries):
@@ -56,10 +58,12 @@ class SAPConnector:
 
     @staticmethod
     def _as_date(value):
+        """Parse an ISO date string into a ``date``; pass through anything else unchanged."""
         return date.fromisoformat(value) if isinstance(value, str) else value
 
     # ---- upsert one purchase order into the datalake ---------------------
     def _upsert_po(self, session: Session, r: dict) -> None:
+        """Insert or update the datalake's purchase order matching ``r["po_number"]``."""
         existing = session.exec(
             select(DatalakePurchaseOrder).where(
                 DatalakePurchaseOrder.po_number == r["po_number"]
@@ -80,7 +84,7 @@ class SAPConnector:
                 setattr(existing, k, v)
             session.add(existing)
         else:
-            session.add(DatalakePurchaseOrder(**fields))
+            session.add(DatalakePurchaseOrder(**fields)) #type: ignore
 
     def sync_purchase_orders(self, session: Session) -> int:
         """Pull every PO from SAP and upsert it into the datalake (idempotent)."""
@@ -90,6 +94,7 @@ class SAPConnector:
         return len(rows)
 
     def derive_suppliers(self, session: Session) -> int:
+        """Create any supplier name seen on a purchase order that isn't in the datalake yet."""
         rows = self._get("/api/bapi/purchase-orders/")
         names = {r["supplier_name"] for r in rows if r.get("supplier_name")}
         for name in names:
@@ -102,6 +107,7 @@ class SAPConnector:
 
     # ---- upsert one production schedule entry -----------------------------
     def _upsert_schedule(self, session: Session, r: dict) -> None:
+        """Insert or update the datalake's schedule entry matching ``r["part_reference"]``."""
         existing = session.exec(
             select(DatalakeProductionSchedule).where(
                 DatalakeProductionSchedule.part_reference == r["part_reference"]
@@ -118,7 +124,7 @@ class SAPConnector:
                 setattr(existing, k, v)
             session.add(existing)
         else:
-            session.add(DatalakeProductionSchedule(**fields))
+            session.add(DatalakeProductionSchedule(**fields)) # type: ignore
 
     def sync_production_schedules(self, session: Session) -> int:
         """Pull the Airbus assembly line schedule and upsert it (idempotent)."""
@@ -129,6 +135,7 @@ class SAPConnector:
 
     # ---- upsert one goods receipt ------------------------------------------
     def _upsert_receipt(self, session: Session, r: dict) -> None:
+        """Insert or update the datalake's goods receipt matching ``r["po_number"]``."""
         existing = session.exec(
             select(DatalakeGoodsReceipt).where(
                 DatalakeGoodsReceipt.po_number == r["po_number"]
@@ -146,7 +153,7 @@ class SAPConnector:
                 setattr(existing, k, v)
             session.add(existing)
         else:
-            session.add(DatalakeGoodsReceipt(**fields))
+            session.add(DatalakeGoodsReceipt(**fields)) # type: ignore
 
     def sync_goods_receipts(self, session: Session) -> int:
         """Pull every physical goods receipt and upsert it (idempotent)."""
@@ -157,6 +164,7 @@ class SAPConnector:
 
     # ---- upsert one quality notification (NCR) -----------------------------
     def _upsert_ncr(self, session: Session, r: dict) -> None:
+        """Insert or update the datalake's NCR matching ``r["ncr_number"]``."""
         existing = session.exec(
             select(DatalakeQualityNotification).where(
                 DatalakeQualityNotification.ncr_number == r["ncr_number"]
@@ -197,6 +205,7 @@ class SAPConnector:
 
     # ---- write-back: push a new delivery date to SAP (after HITL) --------
     def push_delivery_date(self, po_number: str, new_date: str) -> dict:
+        """Push a human-approved delivery date change back to SAP for ``po_number``."""
         url = f"{self.base_url}/api/bapi/purchase-orders/{po_number}/update-date"
         resp = requests.put(url, params={"new_date": new_date}, timeout=10)
         resp.raise_for_status()
@@ -208,6 +217,7 @@ class SAPConnector:
 # ---------------------------------------------------------------------------
 
 def extract_and_load_purchase_orders() -> None:
+    """Run a full SAP sync via a fresh ``SAPConnector`` and print a one-line summary."""
     print("Extraction des commandes d'achat depuis SAP (BAPI)...")
     connector = SAPConnector()
     try:
@@ -224,6 +234,7 @@ def extract_and_load_purchase_orders() -> None:
 
 
 def run_pipeline() -> None:
+    """Entrypoint for ``python -m etl.sap_connector``: init the datalake, then sync."""
     print("Démarrage du pipeline ETL ActuAI...")
     init_db()
     extract_and_load_purchase_orders()
