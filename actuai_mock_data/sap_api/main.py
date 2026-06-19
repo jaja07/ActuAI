@@ -1,7 +1,10 @@
+import asyncio
+import random
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select, create_engine, SQLModel
 from typing import List
 
+from generators.emails import generate_supplier_emails
 from actuai_mock_data.config import settings
 from actuai_mock_data.sap_api.model import (
     PurchaseOrder, 
@@ -18,8 +21,9 @@ def create_db_and_tables():
 app = FastAPI(title="SAP BAPI Mock API", description="API factice pour le projet ActuAI")
 
 @app.on_event("startup")
-def on_startup():
+async def on_startup():
     create_db_and_tables()
+    asyncio.create_task(periodic_email_sender())
 
 def get_session():
     with Session(engine) as session:
@@ -76,3 +80,30 @@ def create_quality_notification(notification: QualityNotification, session: Sess
     session.commit()
     session.refresh(notification)
     return notification
+
+# ==========================================
+# GESTION DE LA SIMULATION EN ARRIÈRE-PLAN
+# ==========================================
+
+async def periodic_email_sender():
+    """Boucle infinie qui envoie un email aléatoire de temps en temps."""
+    print("Simulateur d'emails en arrière-plan activé...")
+    while True:
+        # Pour ta démo, on génère un délai aléatoire entre 15 et 40 secondes
+        delay = random.randint(15, 40)
+        await asyncio.sleep(delay)
+        
+        print(f"\n[Auto-Simulation] Génération d'un email spontané après {delay}s...")
+        await asyncio.to_thread(generate_supplier_emails, num_emails=1) # On utilise to_thread pour ne pas bloquer le serveur FastAPI
+
+
+# ==========================================
+# BOUTON MAGIQUE POUR LA DÉMO (Trigger Manuel)
+# ==========================================
+
+@app.post("/api/simulate/trigger-email")
+async def trigger_manual_email():
+    """Route de secours pour la présentation : force l'envoi d'un email IMMÉDIATEMENT."""
+    print("\n[Démo] Déclenchement manuel d'un email fournisseur...")
+    await asyncio.to_thread(generate_supplier_emails, num_emails=1)
+    return {"status": "success", "message": "Email envoyé au backend LangGraph !"}

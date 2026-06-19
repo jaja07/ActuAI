@@ -6,7 +6,7 @@ from actuai_mock_data.config import settings
 fake = Faker('fr_FR')
 
 def generate_supplier_emails(num_emails: int = 5):
-    print("📧 Simulation du flux d'emails fournisseurs MS Exchange...")
+    print("Simulation du flux d'emails fournisseurs MS Exchange...")
     
     subjects = [
         "Confirmation d'expédition",
@@ -30,7 +30,7 @@ def generate_supplier_emails(num_emails: int = 5):
         # Simulation de l'envoi vers l'ETL (qui n'existe pas encore)
         try:
             response = requests.post(str(settings.webhook_target_url), json=email_payload)
-            print(f"  [➔] Email envoyé : {email_payload['subject']} (Statut: {response.status_code})")
+            print(f"  [OK] Email envoyé : {email_payload['subject']} (Statut: {response.status_code})")
         except requests.exceptions.ConnectionError:
             # Normal tant que ton backend principal n'est pas lancé
             print(f"  [X] Backend ETL injoignable. Payload généré en local : {email_payload['subject']}")

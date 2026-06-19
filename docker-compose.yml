@@ -54,7 +54,7 @@ services:
     working_dir: /app
     environment:
       PYTHONPATH: /app
-      DATABASE_URL: "sqlite:///./sap_mock.db"
+      DATABASE_URL: "sqlite:////app/data/sap_mock.db"
       MOCK_NETWORK_DRIVE_DIR: /app/output/network_drives
       MOCK_EXCEL_DIR: /app/output/excel_shares
       WEBHOOK_TARGET_URL: http://actuai-backend:8000/api/ingest/email
@@ -71,6 +71,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      - mock_sqlite_data:/app/data
       # Shared with actuai-backend so document_indexer.py can read the
       # generated PDFs (see MOCK_DOCS_DIR below).
       - mock_output_data:/app/output
@@ -112,4 +113,5 @@ volumes:
   # Si tu coupes les conteneurs, les données ne seront pas perdues
   postgres_data:
   qdrant_data:
+  mock_sqlite_data:
   mock_output_data:

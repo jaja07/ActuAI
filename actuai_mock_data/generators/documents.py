@@ -13,7 +13,7 @@ class PDF(FPDF):
         self.ln(5)
 
 def generate_technical_documents(num_docs: int = 5):
-    print("📄 Génération des documents PDF sur le disque réseau...")
+    print("Génération des documents PDF sur le disque réseau...")
     
     output_dir = Path(settings.mock_network_drive_dir) / "Fournisseurs_Archives"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -42,7 +42,7 @@ def generate_technical_documents(num_docs: int = 5):
         file_name = f"{doc_type}_{po_number}.pdf"
         pdf.output(output_dir / file_name)
         
-    print(f"✅ {num_docs} fichiers PDF générés dans : {output_dir}")
+    print(f"{num_docs} fichiers PDF générés dans : {output_dir}")
 
 if __name__ == "__main__":
     generate_technical_documents()

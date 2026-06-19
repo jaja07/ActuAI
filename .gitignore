@@ -217,7 +217,13 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Fichiers de configuration spécifiques au mock
-actuai_mock_data/Dockerfile
-actuai_mock_data/pyproject.toml
-actuai_mock_data/README.md
+# ActuAI - bases de données générées localement
+*.db
+*.db-journal
+
+# ActuAI - données factices générées par actuai_mock_data
+actuai_mock_data/output/
+
+# ActuAI - dépendances frontend
+actuai_frontend/node_modules/
+actuai_frontend/dist/

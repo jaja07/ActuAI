@@ -1,54 +1,54 @@
 # ActuAI - Mock Data Engine
 
-Ce module fait partie du projet global **ActuAI**, une architecture multi-agents (LangGraph) conçue pour automatiser les tâches à Non-Valeur Ajoutée (NVA) au sein d'un service d'Actuation aéronautique (contexte : elecTRAS A350).
+This module is part of the global **ActuAI** project, a multi-agent architecture (LangGraph) designed to automate Non-Value-Added (NVA) tasks within an aerospace Actuation department (elecTRAS A350 context).
 
-Étant donné l'impossibilité de se connecter aux systèmes de production industriels réels (souveraineté des données, normes EN9100), ce sous-projet agit comme un **générateur de données factices et un simulateur d'infrastructures**. Il fournit à l'ETL (Extract, Transform, Load) du projet principal un environnement réaliste pour extraire des données structurées et non structurées.
+Since it is impossible to connect to real industrial production systems (data sovereignty, EN9100 standards), this sub-project acts as a **fake data generator and infrastructure simulator**. It provides the main project's ETL (Extract, Transform, Load) pipeline with a realistic environment to extract structured and unstructured data.
 
-## 🎯 Fonctionnalités
+## 🎯 Features
 
-Le moteur simule les quatre sources de données principales du service Actuation :
+The engine simulates the four main data sources of the Actuation department:
 
-1. **SAP ERP (API BAPI Factice) :** une API RESTful développée avec FastAPI et SQLModel (SQLite). Elle simule les modules industriels clés :
-   - **MM (Material Management) :** commandes d'achat (`PurchaseOrder`) et réceptions physiques (`GoodsReceipt`).
-   - **PP (Production Planning) :** planning de la ligne d'assemblage Airbus (`ProductionSchedule`).
-   - **QM (Quality Management) :** fiches de non-conformité (`QualityNotification`).
-2. **MS Exchange (Emails) :** un générateur simulant le flux quotidien d'emails fournisseurs (retards, expéditions, rapports 8D) envoyés par webhook HTTP.
-3. **Disques Réseau (Documents Techniques) :** génération de fichiers PDF factices (Certificats matière, Rapports 8D, PV de contrôle) pour alimenter la base vectorielle (RAG).
-4. **Fichiers Excel (Tableaux de bord) :** création de fichiers `.xlsx` simulant les suivis d'avancement hebdomadaires partagés par les équipes.
+1. **SAP ERP (Fake BAPI API):** a RESTful API built with FastAPI and SQLModel (SQLite). It simulates the key industrial modules:
+   - **MM (Material Management):** purchase orders (`PurchaseOrder`) and physical goods receipts (`GoodsReceipt`).
+   - **PP (Production Planning):** the Airbus assembly line schedule (`ProductionSchedule`).
+   - **QM (Quality Management):** non-conformance reports (`QualityNotification`).
+2. **MS Exchange (Emails):** a generator simulating the daily flow of supplier emails (delays, shipments, 8D reports) sent over an HTTP webhook — either on demand or automatically in the background (see [Background simulation](#background-simulation--demo-trigger) below).
+3. **Network Drives (Technical Documents):** generation of fake PDF files (material certificates, 8D reports, inspection records) to feed the vector database (RAG).
+4. **Excel Files (Dashboards):** creation of `.xlsx` files simulating the weekly progress trackers shared by the teams.
 
-Toutes les données factices sont générées avec [Faker](https://faker.readthedocs.io/) (locale `fr_FR`) et restent cohérentes entre elles (mêmes références pièces, mêmes numéros de commande à travers l'ERP, les PDF et les emails).
+All fake data is generated with [Faker](https://faker.readthedocs.io/) (`fr_FR` locale) and stays consistent across sources (the same part references and purchase order numbers are reused across the ERP, the PDFs, and the emails).
 
-## 📂 Architecture du Sous-Projet
+## 📂 Sub-Project Architecture
 
 ```text
 actuai_mock_data/
-├── pyproject.toml          # Dépendances du sous-projet (workspace uv)
-├── requirements.txt        # Dépendances figées pour l'image Docker (pip)
-├── Dockerfile               # Image de l'API SAP factice
+├── pyproject.toml          # Sub-project dependencies (uv workspace)
+├── requirements.txt        # Pinned dependencies for the Docker image (pip)
+├── Dockerfile               # Fake SAP API image
 ├── README.md
 ├── __init__.py
-├── config.py                # Validation Pydantic des variables d'environnement
-├── sap_api/                 # Simulation de l'ERP SAP
-│   ├── main.py               # Endpoints FastAPI (CRUD)
-│   ├── model.py               # Schémas de la base de données (SQLModel)
-│   └── seeder.py               # Script d'injection des données initiales
-├── generators/               # Scripts de génération de données non-structurées
-│   ├── main.py                 # Orchestrateur (excel + documents + emails)
+├── config.py                # Pydantic validation of environment variables
+├── sap_api/                 # SAP ERP simulation
+│   ├── main.py               # FastAPI endpoints (CRUD + demo/background simulation)
+│   ├── model.py               # Database schemas (SQLModel)
+│   └── seeder.py               # Initial data seeding script
+├── generators/               # Unstructured data generation scripts
+│   ├── main.py                 # Orchestrator (excel + documents + emails)
 │   ├── excel.py
 │   ├── documents.py
 │   └── emails.py
-└── output/                   # Dossiers cibles générés automatiquement
+└── output/                   # Target folders, generated automatically
     ├── network_drives/
     └── excel_shares/
 ```
 
-## ⚙️ Prérequis et Installation
+## ⚙️ Prerequisites and Installation
 
-Ce projet utilise **[uv](https://github.com/astral-sh/uv)** comme gestionnaire de paquets et d'environnements virtuels, configuré en mode *Workspace* depuis la racine du dépôt global (`actuai_mock_data` et `actuai_backend` sont déclarés comme membres dans le `pyproject.toml` racine).
+This project uses **[uv](https://github.com/astral-sh/uv)** as package and virtual environment manager, configured in *Workspace* mode from the global repository root (`actuai_mock_data` and `actuai_backend` are declared as members in the root `pyproject.toml`).
 
-1. **Configuration de l'environnement**
+1. **Environment configuration**
 
-   Créez (ou complétez) le fichier `.env` à la racine globale du projet avec les variables suivantes :
+   Create (or complete) the `.env` file at the global repository root with the following variables:
 
    ```env
    MOCK_NETWORK_DRIVE_DIR=./actuai_mock_data/output/network_drives
@@ -59,102 +59,127 @@ Ce projet utilise **[uv](https://github.com/astral-sh/uv)** comme gestionnaire d
 
    | Variable | Description |
    |---|---|
-   | `MOCK_NETWORK_DRIVE_DIR` | Dossier simulant le disque réseau partagé où sont déposés les PDF techniques. |
-   | `MOCK_EXCEL_DIR` | Dossier simulant le partage réseau où sont déposés les tableaux de bord Excel. |
-   | `DATABASE_URL` | URL SQLAlchemy de la base SQLite utilisée par l'API SAP factice. |
-   | `WEBHOOK_TARGET_URL` | Endpoint HTTP de l'ETL/backend vers lequel les emails fournisseurs simulés sont envoyés. |
+   | `MOCK_NETWORK_DRIVE_DIR` | Folder simulating the shared network drive where technical PDFs are dropped. |
+   | `MOCK_EXCEL_DIR` | Folder simulating the network share where Excel dashboards are dropped. |
+   | `DATABASE_URL` | SQLAlchemy URL of the SQLite database used by the fake SAP API. |
+   | `WEBHOOK_TARGET_URL` | HTTP endpoint of the ETL/backend that simulated supplier emails are sent to. |
 
-2. **Installation des dépendances**
+2. **Install dependencies**
 
-   Depuis la racine du projet (où se trouve `uv.lock`) :
+   From the repository root (where `uv.lock` lives), sync **all workspace members** — a plain `uv sync` only installs the root project's own dependencies (which are empty) and skips `actuai_mock_data`/`actuai_backend`:
 
    ```bash
-   uv sync
+   uv sync --all-packages
    ```
 
-## 🚀 Utilisation
+## 🚀 Usage
 
-Les commandes suivantes doivent être exécutées depuis la **racine du projet global**, afin que le package `actuai_mock_data` soit résolvable.
+The following commands must be run from the **global project root**, so that the `actuai_mock_data` package is resolvable.
 
-### 1. Initialiser et peupler l'ERP SAP (Seeding)
+### 1. Initialize and seed the SAP ERP (Seeding)
 
-Avant de lancer l'API, il faut créer la base de données SQLite et la remplir avec des données métier cohérentes (commandes, FNC, planning de production sur 15 références pièces A350).
+Before starting the API, the SQLite database must be created and filled with consistent business data (orders, NCRs, production schedule across 15 A350 part references).
 
 ```bash
 uv run python -m actuai_mock_data.sap_api.seeder
 ```
 
-⚠️ Ce script **réinitialise** la base de données (`drop_all` puis `create_all`) à chaque exécution.
+⚠️ This script **resets** the database (`drop_all` then `create_all`) on every run.
 
-### 2. Lancer l'API SAP Factice (FastAPI)
+### 2. Start the Fake SAP API (FastAPI)
 
-Démarre le serveur local qui expose les points de terminaison pour l'Extracteur ETL.
+Starts the local server exposing the endpoints for the ETL extractor.
 
 ```bash
 uv run uvicorn actuai_mock_data.sap_api.main:app --reload --port 8080
 ```
 
-* 📖 **Documentation interactive (Swagger) :** [http://localhost:8080/docs](http://localhost:8080/docs)
+* 📖 **Interactive docs (Swagger):** [http://localhost:8080/docs](http://localhost:8080/docs)
 
-#### Endpoints disponibles
+#### Available endpoints
 
-| Méthode | Route | Description |
+| Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/bapi/purchase-orders/` | Liste toutes les commandes d'achat. |
-| `GET` | `/api/bapi/purchase-orders/{po_number}` | Détail d'une commande d'achat. |
-| `GET` | `/api/bapi/goods-receipts/` | Liste toutes les réceptions physiques. |
-| `GET` | `/api/bapi/production-schedules/` | Liste le planning de production. |
-| `GET` | `/api/bapi/quality-notifications/` | Liste les fiches de non-conformité (FNC). |
-| `PUT` | `/api/bapi/purchase-orders/{po_number}/update-date` | Permet à un agent de repousser une date de livraison. |
-| `POST` | `/api/bapi/quality-notifications/` | Permet à un agent de créer une FNC dans SAP. |
+| `GET` | `/api/bapi/purchase-orders/` | List all purchase orders. |
+| `GET` | `/api/bapi/purchase-orders/{po_number}` | Detail of a single purchase order. |
+| `GET` | `/api/bapi/goods-receipts/` | List all physical goods receipts. |
+| `GET` | `/api/bapi/production-schedules/` | List the production schedule. |
+| `GET` | `/api/bapi/quality-notifications/` | List the non-conformance reports (NCR). |
+| `PUT` | `/api/bapi/purchase-orders/{po_number}/update-date` | Lets an agent push back a delivery date. |
+| `POST` | `/api/bapi/quality-notifications/` | Lets an agent create an NCR in SAP. |
+| `POST` | `/api/simulate/trigger-email` | Demo helper: immediately fires one simulated supplier email. |
 
-### 3. Générer le flux de données non-structurées
+#### Background simulation & demo trigger
 
-Lance le script d'orchestration qui génère les fichiers Excel, les PDF techniques et simule l'envoi des webhooks emails.
+On startup, `sap_api/main.py` schedules an `asyncio` background task (`periodic_email_sender`) that fires one random supplier email (via `generate_supplier_emails`) every 15 to 40 seconds, for as long as the API process is running — useful to demo a continuously "live" system without manually re-running the generators. The `POST /api/simulate/trigger-email` route does the same thing on demand, instantly, for presentations.
+
+### 3. Generate the unstructured data flow
+
+Runs the orchestration script that generates the Excel files, the technical PDFs, and simulates sending the email webhooks.
 
 ```bash
 uv run python -m actuai_mock_data.generators.main
 ```
 
-Ce script appelle séquentiellement :
-- `generate_weekly_dashboard()` → 1 fichier `Suivi_Hebdo_Actuation.xlsx` (15 lignes par défaut) dans `MOCK_EXCEL_DIR`.
-- `generate_technical_documents()` → 10 PDF (Certificat Matière / Rapport 8D / PV Contrôle) dans `MOCK_NETWORK_DRIVE_DIR/Fournisseurs_Archives`.
-- `generate_supplier_emails()` → 3 emails fournisseurs envoyés en `POST` JSON vers `WEBHOOK_TARGET_URL` (un message est affiché en console si le backend cible n'est pas joignable).
+This script sequentially calls:
+- `generate_weekly_dashboard()` → 1 `Suivi_Hebdo_Actuation.xlsx` file (15 rows by default) in `MOCK_EXCEL_DIR`.
+- `generate_technical_documents()` → 10 PDFs (Material Certificate / 8D Report / Inspection Record) in `MOCK_NETWORK_DRIVE_DIR/Fournisseurs_Archives`.
+- `generate_supplier_emails()` → 3 supplier emails sent as `POST` JSON to `WEBHOOK_TARGET_URL` (a message is printed to the console if the target backend isn't reachable).
 
-*Les fichiers générés sont disponibles dans le dossier `output/`.*
+*Generated files are available under the `output/` folder.*
 
-## 🐳 Exécution avec Docker
+## 🐳 Running with Docker
 
-Une image dédiée à l'API SAP factice est fournie (`Dockerfile`), basée sur `python:3.13-slim` et installée via `pip` à partir de `requirements.txt` (indépendamment de `uv`, pour rester légère en conteneur).
+A dedicated image for the fake SAP API is provided (`Dockerfile`), based on `python:3.13-slim` and installed via `pip` from `requirements.txt` (independently of `uv`, to keep the container lightweight).
+
+### Recommended: via the root `docker-compose.yml`
+
+The `actuai-mock-data` service is wired into the global `docker-compose.yml` at the repository root, alongside the PostgreSQL/Qdrant datalake:
+
+```bash
+docker compose up -d actuai-mock-data
+```
+
+* The API is exposed on `http://localhost:8080`.
+* The SQLite database is persisted in the named volume `mock_sqlite_data` (mounted at `/app/data`, with `DATABASE_URL` overridden in the compose file to point there) — data survives container restarts/recreations.
+* Generated PDFs/Excel files are persisted in the named volume `mock_output_data` (mounted at `/app/output`), so they are not lost when the container is recreated and can later be shared with `actuai_backend`.
+* The image bakes in default values for `DATABASE_URL`, `MOCK_NETWORK_DRIVE_DIR`, `MOCK_EXCEL_DIR`, and `WEBHOOK_TARGET_URL` (the latter defaults to `http://actuai-backend:8000/api/v1/webhooks/exchange`, anticipating the backend's future service name in the compose network) — all overridable via `environment:`.
+* The seeder and generators are not run automatically; run them inside the running container on demand, e.g.:
+
+  ```bash
+  docker exec actuai-mock-data python -m sap_api.seeder
+  docker exec actuai-mock-data python -m generators.main
+  ```
+
+### Standalone (without compose)
 
 ```bash
 docker build -t actuai-mock-sap -f actuai_mock_data/Dockerfile .
 docker run -p 8080:8080 actuai-mock-sap
 ```
 
-L'image expose le port `8080` et embarque des valeurs par défaut pour `DATABASE_URL`, `MOCK_NETWORK_DRIVE_DIR` et `MOCK_EXCEL_DIR` (surchargeables via `-e`).
+With this approach, the SQLite database and generated files live only inside the container's writable layer and are lost when the container is removed — prefer the compose service above for anything beyond a quick manual test.
 
-Les bases de données du projet principal (PostgreSQL pour le datalake relationnel, Qdrant pour le datalake vectoriel) sont quant à elles définies dans le `docker-compose.yml` à la racine du dépôt.
+## 🔗 Integration with the main project (ActuAI Backend)
 
-## 🔗 Intégration avec le projet principal (ActuAI Backend)
+Once this mock is running, the main project (the ETL and the LangGraph agents) can:
 
-Une fois ce mock démarré, le projet principal (l'ETL et les agents LangGraph) peut :
+* Query the `GET http://localhost:8080/api/bapi/...` routes to extract data and populate the PostgreSQL datalake.
+* Read the PDF files generated under `output/network_drives/Fournisseurs_Archives/` to vectorize them via the embedding model (Qdrant).
+* Read the Excel files generated under `output/excel_shares/` for manual operator tracking.
+* Receive `POST` requests from the fake supplier emails on its own ingestion router (`WEBHOOK_TARGET_URL`).
+* Use the `PUT`/`POST` routes of the fake API to simulate agents' corrective actions (pushing back a date, creating an NCR).
 
-* Interroger les routes `GET http://localhost:8080/api/bapi/...` pour extraire les données et remplir le datalake PostgreSQL.
-* Lire les fichiers PDF générés dans `output/network_drives/Fournisseurs_Archives/` pour les vectoriser via le modèle d'embedding (Qdrant).
-* Lire les fichiers Excel générés dans `output/excel_shares/` pour le suivi manuel des opérateurs.
-* Recevoir les requêtes `POST` des faux emails fournisseurs sur son propre routeur d'ingestion (`WEBHOOK_TARGET_URL`).
-* Utiliser les routes `PUT`/`POST` de l'API factice pour simuler les actions correctives des agents (report de date, création de FNC).
+## 🧰 Tech Stack
 
-## 🧰 Stack technique
-
-| Domaine | Bibliothèque |
+| Domain | Library |
 |---|---|
-| API REST | `fastapi`, `uvicorn` |
-| ORM / Base de données | `sqlmodel` (SQLite) |
-| Génération de données | `faker` |
-| Fichiers Excel | `pandas`, `openpyxl` |
-| Fichiers PDF | `fpdf2` |
+| REST API | `fastapi`, `uvicorn` |
+| ORM / Database | `sqlmodel` (SQLite) |
+| Data generation | `faker` |
+| Excel files | `pandas`, `openpyxl` |
+| PDF files | `fpdf2` |
+| HTTP client (webhooks) | `requests` |
 | Configuration | `pydantic-settings` |
 
-Python ≥ 3.13 requis (voir `pyproject.toml`).
+Python ≥ 3.13 required (see `pyproject.toml`).

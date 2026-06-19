@@ -13,4 +13,4 @@ __pycache__/
 .uv/
 
 # Fichiers de sortie générés localement
-actuai_mock_data/src/output/
+actuai_mock_data/output/

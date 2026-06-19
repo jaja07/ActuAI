@@ -20,7 +20,7 @@ SUPPLIERS = ["Safran", "Thales", "Liebherr", "Moog", "Parker Aerospace"]
 DEFECTS = ["Rayure sur carter", "Absence certificat matière", "Erreur dimensionnelle", "Oxydation connecteur"]
 
 def seed_database():
-    print("🔄 Initialisation de la base de données SAP factice...")
+    print("Initialisation de la base de données SAP factice...")
     engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
     
     # Réinitialisation (Drop & Create)
@@ -88,7 +88,7 @@ def seed_database():
                     session.add(fnc)
 
         session.commit()
-        print("✅ Base de données simulée avec succès !")
+        print("Base de données simulée avec succès !")
         print(f"   - {len(schedules)} pièces planifiées sur la ligne d'assemblage A350.")
         print(f"   - {len(purchase_orders)} commandes fournisseurs générées.")
 
