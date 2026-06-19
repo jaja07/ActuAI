@@ -89,16 +89,16 @@ class QdrantRetriever(Retriever):
     """
 
     def __init__(self) -> None:
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        from langchain_community.vectorstores import Qdrant
+        from langchain_huggingface import HuggingFaceEmbeddings
+        from langchain_qdrant import QdrantVectorStore
         from qdrant_client import QdrantClient
 
         self._client = QdrantClient(url=settings.QDRANT_URL)
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        self._store = Qdrant(
+        self._store = QdrantVectorStore(
             client=self._client,
             collection_name=settings.QDRANT_COLLECTION,
-            embeddings=embeddings,
+            embedding=embeddings,
         )
 
     def search(self, query: str, k: int, max_clearance: str) -> list[dict]:

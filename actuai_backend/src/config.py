@@ -37,15 +37,21 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # ---- Database (the local datalake — PostgreSQL, SYNC driver) ----------
-    # psycopg2 (sync) is the workspace's chosen driver. The variable name
-    # matches the team's database/connection.py contract.
+    # psycopg v3 (sync) is the workspace's chosen driver — psycopg2 crashes with
+    # a UnicodeDecodeError on Windows machines set to a non-English locale.
+    # The variable name matches the team's database/connection.py contract.
     DATABASE_URL_BACKEND: str = (
-        "postgresql://actuai_user:actuai_password@localhost:5432/actuai_db"
+        "postgresql+psycopg://actuai_user:actuai_password@localhost:5432/actuai_db"
     )
 
     # ---- Vector database (Qdrant) — used by the RAG / Investigative agent --
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_COLLECTION: str = "technical_documentation"
+
+    # ---- Technical documents indexed by etl/document_indexer.py -----------
+    # Default assumes the process runs from the repo root (local dev). In
+    # Docker this is overridden to the shared volume mount point.
+    MOCK_DOCS_DIR: str = "./actuai_mock_data/output/network_drives/Fournisseurs_Archives"
 
     # ---- Mock SAP / BAPI --------------------------------------------------
     # The simulated SAP ERP (actuai_mock_data) serves the BAPI under
