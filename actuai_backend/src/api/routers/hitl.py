@@ -69,6 +69,42 @@ def approve_task(
             body=task.payload.get("body", ""),
             sent_by=user.username,
         ))
+    elif task.kind == "AOG_ALERT":
+        # Mission 2: approving an AOG alert sends an escalation email to the
+        # supplier/transporter asking for expedited shipping — no SAP write.
+        supplier = task.payload.get("supplier_name", "supplier")
+        session.add(SentEmail(
+            to_address=f"logistics@{supplier.lower().replace(' ', '')}.com",
+            subject=f"URGENT — AOG risk on {task.payload.get('po_number', '')}",
+            body=(
+                f"Your delivery for {task.payload.get('part_reference', '')} is now forecast for "
+                f"{task.payload.get('supplier_eta', '')}, which is {task.payload.get('delay_vs_dropdead_days', '?')} "
+                f"day(s) past the {task.payload.get('drop_dead_date', '')} drop-dead date required by the "
+                f"{task.payload.get('aircraft_program', '')} assembly line. Please expedite shipping."
+            ),
+            sent_by=user.username,
+        ))
+    elif task.kind == "RAG_ANSWER":
+        # Mission 4: "approving" a RAG synthesis just records that a human
+        # reviewed and signed off on it (traceability for the AI's output,
+        # report 5.3) — no SAP write, no outbound email.
+        pass
+    elif task.kind == "TRACEABILITY_DOSSIER":
+        # Mission 5: "Archiver le dossier d'audit" — the engineer's sign-off
+        # IS the archival event (captured by the audit log below); no SAP
+        # write or email is involved in this use case.
+        pass
+    elif task.kind == "CREATE_FNC":
+        # Mission 3: approving a Quality Notification draft submits it to SAP.
+        ncr_number = task.payload.get("ncr_number")
+        po_number = task.payload.get("po_number")
+        defect_type = task.payload.get("defect_type")
+        if not (ncr_number and po_number and defect_type):
+            raise HTTPException(status_code=409, detail="Draft is missing FNC fields")
+        try:
+            SAPConnector().create_quality_notification(ncr_number, po_number, defect_type)
+        except (requests.exceptions.RequestException, RuntimeError) as exc:
+            raise HTTPException(status_code=502, detail=f"SAP write failed: {exc}")
     else:
         # SAP write-back via the mock API:
         # PUT /api/bapi/purchase-orders/{po}/update-date?new_date=YYYY-MM-DD

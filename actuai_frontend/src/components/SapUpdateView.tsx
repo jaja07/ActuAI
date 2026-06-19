@@ -9,7 +9,16 @@ interface SapUpdateViewProps {
 }
 
 export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateViewProps) {
-  const [decision, setDecision] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [decision, setDecision] = useState<'pending' | 'approved' | 'rejected'>(
+    activeTask?.status === 'EXECUTED' ? 'approved' : activeTask?.status === 'REJECTED' ? 'rejected' : 'pending'
+  );
+
+  const payload = activeTask?.payload || {};
+  const poNumber = payload.po_number || activeTask?.payload?.po_number || 'N/A';
+  const supplierName = payload.supplier_name || 'Unknown supplier';
+  const currentDate = payload.current_expected_date || '—';
+  const newDate = payload.new_expected_date || '—';
+  const sourceEmail = payload.source_email || activeTask?.summary || 'No source extract available.';
 
   const handleApprove = async () => {
     if (!activeTask) return;
@@ -51,15 +60,18 @@ export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateV
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-label-md font-label-md text-primary bg-primary-container px-2.5 py-1 rounded font-mono font-bold">
-              PO-456123
+              {poNumber}
             </span>
             <span className="text-label-md font-label-md text-on-surface-variant font-medium">
-              SAP Logistics Division
+              {supplierName}
             </span>
           </div>
           <h2 className="text-headline-md font-headline-md text-on-surface">
             SAP Date Update Request
           </h2>
+          {activeTask?.summary && (
+            <p className="text-body-md text-on-surface-variant mt-1">{activeTask.summary}</p>
+          )}
         </div>
 
         {/* Header Action Tools */}
@@ -123,9 +135,9 @@ export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateV
             <div>
               <p className="font-bold text-sm">Action Status Declared</p>
               <p className="text-xs">
-                {decision === 'approved' 
-                  ? 'The automated agent pipeline was notified of human approval. Delivery date overridden to 15-May-2024.' 
-                  : 'The request was canceled. A rejection notification with manual appeal form has been automatically dispatched back to supplier@aeroparts.com.'
+                {decision === 'approved'
+                  ? `SAP write-back executed: ${poNumber} delivery date updated to ${newDate}.`
+                  : `The draft for ${poNumber} was rejected. No change was pushed to SAP.`
                 }
               </p>
             </div>
@@ -147,7 +159,7 @@ export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateV
               </span>
               <div className="flex items-center gap-2 text-error font-bold text-body-lg">
                 <span className="text-lg font-black leading-none">-</span>
-                <span>10-May-2024</span>
+                <span>{currentDate}</span>
               </div>
             </div>
 
@@ -158,7 +170,7 @@ export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateV
               </span>
               <div className="flex items-center gap-2 text-[#166534] font-bold text-body-lg">
                 <span className="text-lg font-black leading-none">+</span>
-                <span>15-May-2024</span>
+                <span>{newDate}</span>
               </div>
             </div>
           </div>
@@ -170,18 +182,14 @@ export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateV
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-on-surface-variant" />
               <span className="font-label-md text-label-md text-on-surface-variant font-semibold">
-                Source Extract: Email correspondence from supplier@aeroparts.com
+                Source Extract: Ingested supplier email
               </span>
             </div>
-            <span className="text-[10px] text-on-surface-variant/80 font-mono font-bold">DIGITAL_ID: 94819_SAP</span>
+            <span className="text-[10px] text-on-surface-variant/80 font-mono font-bold">TASK #{activeTask?.id ?? '—'}</span>
           </div>
-          
+
           <div className="p-6 font-code-md text-code-md text-on-surface-variant whitespace-pre-wrap leading-relaxed bg-[#ffffff]">
-            {"\"...Due to unexpected material shortages on the alloy casing, we regret to inform you that we cannot meet the original delivery date of 10-May. \n\nWe anticipate completing the final testing by 13-May and can expedite shipping to arrive at your facility by "}
-            <span className="bg-[#fef08a] text-on-surface px-1 rounded font-bold border border-[#f59e0b]/20">
-              15-May
-            </span>
-            {". Please advise if this requires further discussion...\""}
+            {sourceEmail}
           </div>
         </div>
       </div>

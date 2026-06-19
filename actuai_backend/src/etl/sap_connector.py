@@ -211,6 +211,19 @@ class SAPConnector:
         resp.raise_for_status()
         return resp.json()
 
+    # ---- write-back: create a Non-Conformance Report in SAP (Mission 3) --
+    def create_quality_notification(self, ncr_number: str, po_number: str, defect_type: str) -> dict:
+        """Push a human-approved FNC (Quality Notification) into SAP for ``po_number``."""
+        url = f"{self.base_url}/api/bapi/quality-notifications/"
+        resp = requests.post(url, json={
+            "ncr_number": ncr_number,
+            "po_number": po_number,
+            "defect_type": defect_type,
+            "report_8d_status": "PENDING",
+        }, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
 
 # ---------------------------------------------------------------------------
 # Functional entrypoints (kept for the team's `uv run python -m etl.sap_connector`)

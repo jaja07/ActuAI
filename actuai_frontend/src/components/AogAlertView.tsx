@@ -13,6 +13,14 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
   const [escalationNote, setEscalationNote] = useState('');
   const [isEscalating, setIsEscalating] = useState(false);
 
+  const payload = activeTask?.payload || {};
+  const partReference = payload.part_reference || 'N/A';
+  const poNumber = payload.po_number || 'N/A';
+  const dropDeadDate = payload.drop_dead_date || '—';
+  const supplierEta = payload.supplier_eta || '—';
+  const delayDays = payload.delay_vs_dropdead_days ?? '?';
+  const aircraftProgram = payload.aircraft_program || '';
+
   const handleEscalationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeTask) return;
@@ -56,7 +64,7 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-label-md font-label-md text-on-error-container bg-error/10 px-2 py-1 rounded border border-error/20 font-bold font-mono">
-              SN-7890
+              {poNumber}
             </span>
             <span className="text-label-md font-label-md text-error flex items-center gap-1 font-semibold">
               <AlertCircle className="w-3.5 h-3.5" />
@@ -64,8 +72,11 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
             </span>
           </div>
           <h2 className="text-headline-md font-headline-md text-on-error-container tracking-tight">
-            AOG Risk Alert: SN-7890 Final Assembly
+            AOG Risk Alert: {partReference} ({aircraftProgram})
           </h2>
+          {activeTask?.summary && (
+            <p className="text-on-error-container/80 text-body-md mt-1">{activeTask.summary}</p>
+          )}
         </div>
 
         {/* Action Header Tools */}
@@ -194,11 +205,11 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
             <div className="flex items-center justify-between p-4 bg-error/5 border border-error/20 rounded">
               <div className="flex items-center gap-2">
                 <span className="w-24 font-bold text-error">Drop-Dead:</span>
-                <span className="text-on-surface font-semibold">12-May-2024</span>
+                <span className="text-on-surface font-semibold">{dropDeadDate}</span>
               </div>
               <div className="text-error font-label-md text-label-md flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>
-                Required for Engine Mount assembly
+                Required for {aircraftProgram} assembly
               </div>
             </div>
 
@@ -213,7 +224,7 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
             <div className="flex items-center justify-between p-4 bg-surface-container border border-outline-variant rounded">
               <div className="flex items-center gap-2">
                 <span className="w-24 font-bold text-on-surface-variant">Supplier ETA:</span>
-                <span className="text-on-surface">15-May-2024</span>
+                <span className="text-on-surface">{supplierEta}</span>
               </div>
               <div className="text-on-surface-variant font-label-md text-label-md font-semibold">
                 Current Commitment schedule
@@ -223,7 +234,7 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
             {/* Delta calculations */}
             <div className="flex items-center p-4 bg-surface-container-high border border-outline-variant rounded">
               <span className="w-32 font-bold text-on-surface">Delta (Delay):</span>
-              <span className="flex-1 text-error font-bold text-body-lg">3 Days</span>
+              <span className="flex-1 text-error font-bold text-body-lg">{delayDays} Day(s)</span>
               <span className="text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold font-mono">
                 CRITICAL LIMIT EXCEEDED
               </span>
@@ -237,7 +248,7 @@ export default function AogAlertView({ onStatusChange, activeTask }: AogAlertVie
           <div className="text-xs text-on-surface-variant space-y-1">
             <p className="font-semibold text-on-surface">How this resolution works:</p>
             <p>
-              Components delayed past the drop-dead threshold will block production on the SN-7890 fuselage mounts. Escalate now to mobilize express freight and unlock the secondary assembly line buffers.
+              {partReference} delayed past the drop-dead threshold will block production on the {aircraftProgram} assembly line. Escalate now to ask the supplier to expedite shipping.
             </p>
           </div>
         </div>

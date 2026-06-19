@@ -102,19 +102,33 @@ class MockClient(LLMClient):
         if self.role == "supervisor":
             # Heuristic routing for the stub model (demo without a real LLM).
             # We use word BOUNDARIES (\b) so a keyword doesn't match inside
-            # another word. We test reporting words first (delay/shipping) ->
-            # transactional, THEN delivery-time questions -> responder.
+            # another word. We check the hybrid traceability case first (it
+            # needs BOTH a trace keyword AND a serial number to avoid stealing
+            # generic "audit" mentions), then reporting words (delay/shipping)
+            # -> transactional, THEN delivery-time questions -> responder.
+            trace_re = (r"\b(historique complet|full history|end-to-end audit|"
+                        r"complete history|audit complet)\b")
             report_re = r"\b(delay\w*|retard\w*|shipped|exp[ée]di\w*|fnc|schedul\w*|planning)\b"
             enquiry_re = (r"\b(when will|when can|delivery time|lead time|eta|"
                           r"estimated delivery|how long|d[ée]lai\w*|livr\w*)\b")
+            if re.search(trace_re, text) and re.search(r"\bsn-[a-z0-9-]+\b", text):
+                return "traceability"
             if re.search(report_re, text):
                 return "transactional"
             if re.search(enquiry_re, text):
                 return "responder"
             return "investigative"
         if self.role == "transactional":
+            if re.search(r"\b(fnc|non-?conformit\w*|quality notification)\b", text):
+                # CREATE_FNC: try to lift the defect phrase out of "... pour <defect> ...".
+                m_defect = re.search(r"pour (.+?)(?: de la commande| sur la commande|$)", text)
+                defect_type = m_defect.group(1).strip().capitalize() if m_defect else "Défaut signalé"
+                return (
+                    '{"request_type": "CREATE_FNC", "po_number": "' + po + '", '
+                    '"defect_type": "' + defect_type + '", "confidence": "high"}'
+                )
             return (
-                '{"po_number": "' + po + '", "new_status": "DELAYED", '
+                '{"request_type": "DELAY_REPORT", "po_number": "' + po + '", "new_status": "DELAYED", '
                 '"delay_days": 8, "confidence": "high"}'
             )
         if self.role == "responder":
@@ -128,6 +142,12 @@ class MockClient(LLMClient):
                 'on the forecast date shown in our system. We truly appreciate '
                 'your partnership and remain at your full disposal.\\n\\n'
                 'Warm regards,\\nActuAI Customer Service"}'
+            )
+        if "traceability auditor" in system.lower():
+            # Called by agents/traceability for the narrative-writing step.
+            return (
+                '{"narrative": "Component ordered, received, and integrated per '
+                'the datalake records; no anomalies beyond those listed above."}'
             )
         return (
             '{"answer": "Retrieved the latest matching document version.", '

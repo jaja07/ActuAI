@@ -9,6 +9,7 @@ import { useAuth } from '../AuthContext';
 
 export default function Dashboard() {
   const [activeViewId, setActiveViewId] = useState<ViewType>('sap');
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('inbox');
   const [notification, setNotification] = useState<{ message: string; success: boolean } | null>(null);
@@ -39,14 +40,18 @@ export default function Dashboard() {
 
         // Determine viewId based on task kind or payload
         let viewId: ViewType = 'sap';
-        if (task.kind === 'EMAIL_REPLY') {
+        if (task.kind === 'RAG_ANSWER') {
           viewId = 'rag';
+        } else if (task.kind === 'CREATE_FNC') {
+          viewId = 'fnc';
+        } else if (task.kind === 'TRACEABILITY_DOSSIER') {
+          viewId = 'traceability';
         } else if (isSpecialType) {
           viewId = 'aog';
         }
 
         // Fallback title/code
-        let code = task.payload?.po_number || task.payload?.ncr_number || `TASK-${task.id}`;
+        let code = task.payload?.serial_number || task.payload?.po_number || task.payload?.ncr_number || `TASK-${task.id}`;
         let title = task.kind.replace('_', ' ');
 
         return {
@@ -76,12 +81,13 @@ export default function Dashboard() {
     fetchTasks();
   }, []);
 
-  // Modal inspection setup simulation state
+  // "Simulate trigger" modal: posts a real email to the backend ingestion
+  // endpoint, which runs one full Supervisor -> worker -> HITL cycle.
   const [showInspectionModal, setShowInspectionModal] = useState(false);
-  const [newCode, setNewCode] = useState('');
-  const [newTitle, setNewTitle] = useState('');
-  const [newSummary, setNewSummary] = useState('');
-  const [newType, setNewType] = useState<ViewType>('rag');
+  const [newSender, setNewSender] = useState('logistique@safran.com');
+  const [newSubject, setNewSubject] = useState("Retard de livraison");
+  const [newBody, setNewBody] = useState('');
+  const [submittingTrigger, setSubmittingTrigger] = useState(false);
 
   const triggerNotification = (message: string, success: boolean) => {
     setNotification({ message, success });
@@ -90,41 +96,31 @@ export default function Dashboard() {
     }, 4500);
   };
 
-  const handleCreateInspection = (e: React.FormEvent) => {
+  const handleCreateInspection = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCode || !newTitle || !newSummary) return;
+    if (!newBody.trim()) return;
 
-    // Define mock card metadata
-    const isSpecialType = newType === 'aog';
-    const statusLabel = isSpecialType ? 'URGENT REVIEW' : 'PENDING HUMAN REVIEW';
-    const colorTag = isSpecialType ? 'text-on-error-container' : 'text-[#854d0e]';
-    const bgTag = isSpecialType ? 'bg-error-container' : 'bg-[#fef08a]';
-    const dotTag = isSpecialType ? 'bg-error' : 'bg-[#eab308]';
+    setSubmittingTrigger(true);
+    try {
+      const response = await fetchWithAuth('/ingest/email', {
+        method: 'POST',
+        body: JSON.stringify({ sender: newSender, subject: newSubject, body: newBody }),
+      });
+      const result = await response.json();
+      setShowInspectionModal(false);
+      setNewBody('');
 
-    const newItem: InboxItem = {
-      id: `item-${Date.now()}`,
-      viewId: newType,
-      code: newCode.trim(),
-      title: newTitle.trim(),
-      summary: newSummary.trim(),
-      status: statusLabel,
-      statusColor: colorTag,
-      statusBg: bgTag,
-      statusDot: dotTag,
-      time: 'Just now'
-    };
-
-    setInboxItems(prev => [newItem, ...prev]);
-    setActiveViewId(newType);
-    setShowInspectionModal(false);
-
-    // Reset fields
-    setNewCode('');
-    setNewTitle('');
-    setNewSummary('');
-    setNewType('rag');
-
-    triggerNotification(`Created inspection registry profile: ${newItem.code} - ${newItem.title}`, true);
+      if (result.status === 'blocked') {
+        triggerNotification(`Trigger blocked by guardrails: ${result.reason}`, false);
+      } else {
+        triggerNotification(`Agent cycle complete: ${result.summary || 'draft created'}`, true);
+      }
+      await fetchTasks();
+    } catch (err: any) {
+      triggerNotification(`Trigger failed: ${err.message}`, false);
+    } finally {
+      setSubmittingTrigger(false);
+    }
   };
 
   return (
@@ -157,10 +153,11 @@ export default function Dashboard() {
       {/* Dynamic Inbox items list (Left Panel) and active inspection content (Right Panel) */}
       <InboxList
         items={inboxItems}
-        activeViewId={activeViewId}
-        onItemSelect={(viewId) => {
-          setActiveViewId(viewId);
-          triggerNotification(`Loaded operations detail dossier: ${viewId.toUpperCase()}`, true);
+        activeItemId={activeItemId}
+        onItemSelect={(item) => {
+          setActiveViewId(item.viewId);
+          setActiveItemId(item.id);
+          triggerNotification(`Loaded operations detail dossier: ${item.viewId.toUpperCase()}`, true);
         }}
         searchQuery={searchQuery}
       />
@@ -168,7 +165,7 @@ export default function Dashboard() {
       {/* Detail Pane Wrapper */}
       <TaskDetailsPane
         activeViewId={activeViewId}
-        activeTask={inboxItems.find(i => i.viewId === activeViewId)?.originalTask}
+        activeTask={(inboxItems.find(i => i.id === activeItemId) ?? inboxItems.find(i => i.viewId === activeViewId))?.originalTask}
         onStatusChange={(msg, success) => {
           triggerNotification(msg, success);
           if (success) {
@@ -206,65 +203,56 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mb-4 text-primary">
               <ClipboardList className="w-6 h-6 text-primary" />
               <h3 className="text-title-md font-bold tracking-tight text-on-surface">
-                Create Flight inspection Entry
+                Simulate Incoming Email
               </h3>
             </div>
+            <p className="text-xs text-on-surface-variant mb-4">
+              Submits a real email to the backend's ingestion endpoint
+              (<code className="font-mono">/api/ingest/email</code>). The Supervisor
+              agent classifies it and routes it to a worker, which drafts a task
+              that appears in the inbox once the cycle completes.
+            </p>
 
             <form onSubmit={handleCreateInspection} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase mb-1 font-mono">
-                  Dossier Serial Code (e.g. SN-8921 or PO-94819)
+                  Sender
                 </label>
                 <input
                   type="text"
                   className="w-full border border-outline rounded p-2 text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  placeholder="PO-4912 or Project 'Titan'"
-                  value={newCode}
-                  onChange={(e) => setNewCode(e.target.value)}
+                  placeholder="logistique@safran.com"
+                  value={newSender}
+                  onChange={(e) => setNewSender(e.target.value)}
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase mb-1 font-mono">
-                  Mission Identifier Title
+                  Subject
                 </label>
                 <input
                   type="text"
                   className="w-full border border-outline rounded p-2 text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  placeholder="e.g. Turbine Rotor Tolerance Test"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Retard de livraison"
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-on-surface uppercase mb-1 font-mono">
-                  Analysis Summary & Details
+                  Email Body
                 </label>
                 <textarea
-                  className="w-full border border-outline rounded p-2 text-xs h-20 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  placeholder="Enter telemetry coordinates, delay details, or supplier requested changes..."
-                  value={newSummary}
-                  onChange={(e) => setNewSummary(e.target.value)}
+                  className="w-full border border-outline rounded p-2 text-xs h-28 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                  placeholder="Suite à un problème de matière première, la livraison de la commande PO-456123 prévue le 10 mai est repoussée au 15 mai."
+                  value={newBody}
+                  onChange={(e) => setNewBody(e.target.value)}
                   required
                 />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-on-surface uppercase mb-1 font-mono">
-                  Validation Flow Pipeline Target
-                </label>
-                <select
-                  className="w-full border border-outline rounded p-2 text-xs bg-white text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value as ViewType)}
-                >
-                  <option value="sap">SAP Date Update (Interactive Split Diff View)</option>
-                  <option value="aog">AOG Risk Warning (Urgent Timeline Conflict Panel)</option>
-                  <option value="rag">RAG Synthesis (Simulated AI Co-Pilot chat session)</option>
-                </select>
               </div>
 
               <div className="pt-4 flex justify-end gap-2 text-xs">
@@ -277,9 +265,10 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-white rounded font-bold cursor-pointer hover:bg-primary/95 flex items-center gap-1.5"
+                  disabled={submittingTrigger}
+                  className="px-4 py-2 bg-primary text-white rounded font-bold cursor-pointer hover:bg-primary/95 flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  <Plus className="w-4 h-4 text-white" /> Inject Entry Dossier
+                  <Plus className="w-4 h-4 text-white" /> {submittingTrigger ? 'Running agent cycle...' : 'Send to ActuAI'}
                 </button>
               </div>
             </form>

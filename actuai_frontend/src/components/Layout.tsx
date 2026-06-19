@@ -152,7 +152,7 @@ export default function Layout({
               className="w-full bg-primary text-on-primary font-label-md text-label-md py-3 rounded-DEFAULT flex items-center justify-center gap-2 hover:bg-primary/95 transition-all shadow-sm cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
             >
               <Plus className="w-4 h-4" />
-              New Inspection
+              Simulate Email
             </button>
           </div>
 

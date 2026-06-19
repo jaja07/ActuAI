@@ -26,6 +26,7 @@ from agents.investigative import run_investigative
 from agents.responder import run_responder
 from agents.state import GlobalState
 from agents.supervisor import run_supervisor
+from agents.traceability import run_traceability
 from agents.transactional import run_transactional
 from database.models import TaskStatus, ValidationTask
 from security import audit
@@ -51,7 +52,9 @@ def run_cycle(state: GlobalState, session: Session) -> GlobalState:
     state = run_supervisor(state)
 
     # --- 3. Dispatch to the chosen specialist worker ---------------------
-    if state.route == "investigative":
+    if state.route == "traceability":
+        state = run_traceability(state, session)
+    elif state.route == "investigative":
         state = run_investigative(state)
     elif state.route == "responder":
         state = run_responder(state, session)

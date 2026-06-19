@@ -1,17 +1,17 @@
 import React from 'react';
 import { Clock, Filter, AlertTriangle } from 'lucide-react';
-import { InboxItem } from '../types';
+import { InboxItem, ViewType } from '../types';
 
 interface InboxListProps {
   items: InboxItem[];
-  activeViewId: string;
-  onItemSelect: (viewId: 'sap' | 'aog' | 'rag') => void;
+  activeItemId: string | null;
+  onItemSelect: (item: InboxItem) => void;
   searchQuery: string;
 }
 
 export default function InboxList({
   items,
-  activeViewId,
+  activeItemId,
   onItemSelect,
   searchQuery
 }: InboxListProps) {
@@ -53,16 +53,16 @@ export default function InboxList({
           </div>
         ) : (
           filteredItems.map((item) => {
-            const isActive = activeViewId === item.viewId;
+            const isActive = activeItemId === item.id;
             return (
               <div
                 key={item.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => onItemSelect(item.viewId)}
+                onClick={() => onItemSelect(item)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
-                    onItemSelect(item.viewId);
+                    onItemSelect(item);
                   }
                 }}
                 className={`text-left bg-surface-container-lowest rounded-DEFAULT p-4 cursor-pointer relative transition-all shadow-xs block ${

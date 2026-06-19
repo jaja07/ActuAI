@@ -3,6 +3,8 @@ import { ViewType, ValidationTask } from '../types';
 import SapUpdateView from './SapUpdateView';
 import AogAlertView from './AogAlertView';
 import RagSynthesisView from './RagSynthesisView';
+import FncCreationView from './FncCreationView';
+import TraceabilityView from './TraceabilityView';
 import { ShieldCheck, ServerCrash } from 'lucide-react';
 
 interface TaskDetailsPaneProps {
@@ -27,6 +29,10 @@ export default function TaskDetailsPane({
             return <AogAlertView onStatusChange={onStatusChange} activeTask={activeTask} />;
           case 'rag':
             return <RagSynthesisView onStatusChange={onStatusChange} activeTask={activeTask} />;
+          case 'fnc':
+            return <FncCreationView onStatusChange={onStatusChange} activeTask={activeTask} />;
+          case 'traceability':
+            return <TraceabilityView onStatusChange={onStatusChange} activeTask={activeTask} />;
           default:
             return (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-on-surface-variant font-sans">

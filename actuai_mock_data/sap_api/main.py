@@ -1,5 +1,6 @@
 import asyncio
 import random
+from datetime import date
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select, create_engine, SQLModel
 from typing import List
@@ -61,13 +62,13 @@ def get_all_quality_notifications(session: Session = Depends(get_session)):
 # ==========================================
 
 @app.put("/api/bapi/purchase-orders/{po_number}/update-date")
-def update_delivery_date(po_number: str, new_date: str, session: Session = Depends(get_session)):
+def update_delivery_date(po_number: str, new_date: date, session: Session = Depends(get_session)):
     """Permet à l'Agent de repousser une date de livraison (Mission 1 & 2)."""
     order = session.exec(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)).first()
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
-    
-    order.expected_delivery_date = new_date  # type: ignore
+
+    order.expected_delivery_date = new_date
     session.add(order)
     session.commit()
     session.refresh(order)

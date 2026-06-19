@@ -1,4 +1,4 @@
-export type ViewType = 'sap' | 'aog' | 'rag';
+export type ViewType = 'sap' | 'aog' | 'rag' | 'fnc' | 'traceability';
 
 export type TaskStatusType = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTED';
 

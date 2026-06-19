@@ -50,7 +50,7 @@ def run_investigative(state: GlobalState) -> GlobalState:
 
     if not chunks:
         state.draft_summary = "No matching documents found for this query."
-        state.draft_payload = {"answer": "No documents matched.", "sources": []}
+        state.draft_payload = {"kind": "RAG_ANSWER", "answer": "No documents matched.", "sources": []}
         return state
 
     # --- Step 2: build the grounded prompt -------------------------------
@@ -63,7 +63,9 @@ def run_investigative(state: GlobalState) -> GlobalState:
 
     state.draft_summary = result.get("answer", "")[:200]
     state.draft_payload = {
+        "kind": "RAG_ANSWER",
         "answer": result.get("answer", ""),
         "sources": result.get("sources", [c["source"] for c in chunks]),
+        "query": state.raw_input[:500],
     }
     return state

@@ -48,7 +48,16 @@ def ingest_email(
     # 3. Tell the caller what happened (without exposing internals).
     if state.blocked:
         return {"status": "blocked", "reason": state.block_reason}
-    return {"status": "drafted", "summary": state.draft_summary, "trace": state.trace}
+    return {
+        "status": "drafted",
+        "summary": state.draft_summary,
+        "trace": state.trace,
+        # The full draft payload (e.g. RAG answer + sources) so a synchronous
+        # caller like the chat UI can render it without a second round-trip.
+        "payload": state.draft_payload,
+        "agent": state.agent,
+        "mission": state.mission,
+    }
 
 
 @router.post("/v1/webhooks/exchange")
