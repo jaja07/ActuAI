@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import Layout from './Layout';
 import InboxList from './InboxList';
 import TaskDetailsPane from './TaskDetailsPane';
-import { ViewType, InboxItem } from '../types';
-import { Sparkles, ClipboardList, Database, CheckSquare, Plus, X } from 'lucide-react';
+import { ViewType, InboxItem, ValidationTask } from '../types';
+import { Sparkles, ClipboardList, Database, CheckSquare, Plus, X, RefreshCw, LogOut } from 'lucide-react';
+import { fetchWithAuth } from '../api';
+import { useAuth } from '../AuthContext';
 
 export default function Dashboard() {
   const [activeViewId, setActiveViewId] = useState<ViewType>('sap');
@@ -11,45 +13,68 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [notification, setNotification] = useState<{ message: string; success: boolean } | null>(null);
 
-  // Initial registry simulation state
-  const [inboxItems, setInboxItems] = useState<InboxItem[]>([
-    {
-      id: 'item-1',
-      viewId: 'sap',
-      code: 'PO-456123',
-      title: 'SAP Date Update',
-      summary: 'Supplier requested delivery shift to 15-May. Conflicts with dependent assembly schedule.',
-      status: 'PENDING HUMAN REVIEW',
-      statusColor: 'text-[#854d0e]',
-      statusBg: 'bg-[#fef08a]',
-      statusDot: 'bg-[#eab308]',
-      time: '10m ago'
-    },
-    {
-      id: 'item-2',
-      viewId: 'aog',
-      code: 'SN-7890',
-      title: 'AOG Risk Alert',
-      summary: 'Critical component delay detected. Impact on SN-7890 final assembly line.',
-      status: 'URGENT REVIEW',
-      statusColor: 'text-on-error-container',
-      statusBg: 'bg-error-container',
-      statusDot: 'bg-error',
-      time: '1h ago'
-    },
-    {
-      id: 'item-3',
-      viewId: 'rag',
-      code: "Project 'Skyward'",
-      title: 'RAG Synthesis',
-      summary: '8D report analysis complete. Review AI-generated summary for root cause.',
-      status: 'DRAFT READY',
-      statusColor: 'text-[#854d0e]',
-      statusBg: 'bg-[#fef08a]',
-      statusDot: 'bg-[#eab308]',
-      time: '2h ago'
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const { logout } = useAuth();
+
+  const fetchTasks = async () => {
+    setLoadingTasks(true);
+    try {
+      const response = await fetchWithAuth('/tasks');
+      const tasks: ValidationTask[] = await response.json();
+      
+      const mappedItems: InboxItem[] = tasks.map(task => {
+        const isSpecialType = task.kind === 'AOG_ALERT' || task.mission === 'M2';
+        let statusLabel = 'PENDING HUMAN REVIEW';
+        let colorTag = 'text-[#854d0e]';
+        let bgTag = 'bg-[#fef08a]';
+        let dotTag = 'bg-[#eab308]';
+
+        if (isSpecialType) {
+          statusLabel = 'URGENT REVIEW';
+          colorTag = 'text-on-error-container';
+          bgTag = 'bg-error-container';
+          dotTag = 'bg-error';
+        }
+
+        // Determine viewId based on task kind or payload
+        let viewId: ViewType = 'sap';
+        if (task.kind === 'EMAIL_REPLY') {
+          viewId = 'rag';
+        } else if (isSpecialType) {
+          viewId = 'aog';
+        }
+
+        // Fallback title/code
+        let code = task.payload?.po_number || task.payload?.ncr_number || `TASK-${task.id}`;
+        let title = task.kind.replace('_', ' ');
+
+        return {
+          id: `task-${task.id}`,
+          viewId,
+          code,
+          title,
+          summary: task.summary || 'No summary provided',
+          status: statusLabel,
+          statusColor: colorTag,
+          statusBg: bgTag,
+          statusDot: dotTag,
+          time: new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          originalTask: task
+        };
+      });
+
+      setInboxItems(mappedItems);
+    } catch (err: any) {
+      triggerNotification(`Failed to fetch tasks: ${err.message}`, false);
+    } finally {
+      setLoadingTasks(false);
     }
-  ]);
+  };
+
+  React.useEffect(() => {
+    fetchTasks();
+  }, []);
 
   // Modal inspection setup simulation state
   const [showInspectionModal, setShowInspectionModal] = useState(false);
@@ -110,6 +135,25 @@ export default function Dashboard() {
       searchQuery={searchQuery}
       setSearchQuery={setSearchQuery}
     >
+      {/* Top right actions overlay */}
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <button
+          onClick={fetchTasks}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-outline rounded shadow-sm text-xs font-medium hover:bg-surface-container transition-colors"
+          title="Refresh tasks"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loadingTasks ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+        <button
+          onClick={logout}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-outline rounded shadow-sm text-xs font-medium hover:bg-surface-container text-rose-600 transition-colors"
+          title="Logout"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          Logout
+        </button>
+      </div>
       {/* Dynamic Inbox items list (Left Panel) and active inspection content (Right Panel) */}
       <InboxList
         items={inboxItems}
@@ -124,8 +168,13 @@ export default function Dashboard() {
       {/* Detail Pane Wrapper */}
       <TaskDetailsPane
         activeViewId={activeViewId}
+        activeTask={inboxItems.find(i => i.viewId === activeViewId)?.originalTask}
         onStatusChange={(msg, success) => {
           triggerNotification(msg, success);
+          if (success) {
+            // Refresh tasks on successful action
+            fetchTasks();
+          }
         }}
       />
 

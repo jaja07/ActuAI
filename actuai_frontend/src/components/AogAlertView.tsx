@@ -1,28 +1,43 @@
 import React, { useState } from 'react';
 import { AlertCircle, ShieldAlert, Send, Undo2, X, AlertOctagon, HelpCircle } from 'lucide-react';
+import { ValidationTask } from '../types';
+import { fetchWithAuth } from '../api';
 
 interface AogAlertViewProps {
   onStatusChange?: (statusMessage: string, success: boolean) => void;
+  activeTask?: ValidationTask;
 }
 
-export default function AogAlertView({ onStatusChange }: AogAlertViewProps) {
+export default function AogAlertView({ onStatusChange, activeTask }: AogAlertViewProps) {
   const [escalated, setEscalated] = useState<'none' | 'escalated' | 'ignored'>('none');
   const [escalationNote, setEscalationNote] = useState('');
   const [isEscalating, setIsEscalating] = useState(false);
 
-  const handleEscalationSubmit = (e: React.FormEvent) => {
+  const handleEscalationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setEscalated('escalated');
-    setIsEscalating(false);
-    if (onStatusChange) {
-      onStatusChange(`AOG Critical Path priority escalated to Ops Director. Included note: "${escalationNote || 'None'}"`, true);
+    if (!activeTask) return;
+    try {
+      await fetchWithAuth(`/tasks/${activeTask.id}/approve`, { method: 'POST' });
+      setEscalated('escalated');
+      setIsEscalating(false);
+      if (onStatusChange) {
+        onStatusChange(`AOG Critical Path priority escalated to Ops Director. Included note: "${escalationNote || 'None'}"`, true);
+      }
+    } catch (err: any) {
+      if (onStatusChange) onStatusChange(`Escalation failed: ${err.message}`, false);
     }
   };
 
-  const handleIgnore = () => {
-    setEscalated('ignored');
-    if (onStatusChange) {
-      onStatusChange("AOG warning logged. Alert suppressed, status: Ignore.", false);
+  const handleIgnore = async () => {
+    if (!activeTask) return;
+    try {
+      await fetchWithAuth(`/tasks/${activeTask.id}/reject`, { method: 'POST' });
+      setEscalated('ignored');
+      if (onStatusChange) {
+        onStatusChange("AOG warning logged. Alert suppressed, status: Ignore.", true);
+      }
+    } catch (err: any) {
+      if (onStatusChange) onStatusChange(`Action failed: ${err.message}`, false);
     }
   };
 

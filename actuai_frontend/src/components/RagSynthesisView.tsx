@@ -12,6 +12,8 @@ import {
   Share2, 
   Cpu 
 } from 'lucide-react';
+import { ValidationTask } from '../types';
+import { fetchWithAuth } from '../api';
 
 interface ChatMessage {
   id: string;
@@ -20,7 +22,12 @@ interface ChatMessage {
   sources?: Array<{ label: string; icon: 'file' | 'temp' }>;
 }
 
-export default function RagSynthesisView() {
+interface RagSynthesisViewProps {
+  onStatusChange?: (statusMessage: string, success: boolean) => void;
+  activeTask?: ValidationTask;
+}
+
+export default function RagSynthesisView({ onStatusChange, activeTask }: RagSynthesisViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-1',
@@ -84,12 +91,24 @@ export default function RagSynthesisView() {
     }, 1200);
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    if (!activeTask) {
+      alert("No active task selected.");
+      return;
+    }
+    
     setIsPublished(true);
-    setTimeout(() => {
+    try {
+      await fetchWithAuth(`/tasks/${activeTask.id}/approve`, { method: 'POST' });
+      if (onStatusChange) {
+        onStatusChange("Successfully published synthesis output to team workspace and archived under operations log!", true);
+      }
+    } catch (err: any) {
+      if (onStatusChange) {
+        onStatusChange(`Publish failed: ${err.message}`, false);
+      }
       setIsPublished(false);
-      alert("Successfully published synthesis output to team workspace and archived under Skyward operations log!");
-    }, 1500);
+    }
   };
 
   return (

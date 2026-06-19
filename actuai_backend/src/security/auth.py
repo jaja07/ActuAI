@@ -22,8 +22,10 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+from sqlmodel import Session, select
 
 from config import settings
+from database.models import User
 
 
 # --- Password hashing (bcrypt, used directly) ------------------------------
@@ -62,17 +64,12 @@ class TokenUser(BaseModel):
     clearance: str = "INTERNAL"  # PUBLIC / INTERNAL / CONFIDENTIAL / EAR / ITAR
 
 
-# ---------------------------------------------------------------------------
-# Demo user store. In v2 this is the company IdP; here it's a small dict so the
-# system runs out of the box. Passwords are hashed at seed time.
-# ---------------------------------------------------------------------------
-_USERS: dict[str, dict] = {}
-
-
-def seed_demo_users() -> None:
-    """Create a few demo accounts so you can log in immediately after deploy."""
-    if _USERS:
+def seed_demo_users(session: Session) -> None:
+    """Create a few demo accounts in the database so you can log in immediately after deploy."""
+    existing_user = session.exec(select(User).limit(1)).first()
+    if existing_user:
         return
+        
     demo = [
         ("expert", "expert123", Role.ENGINEER, "CONFIDENTIAL"),
         ("buyer", "buyer123", Role.BUYER, "INTERNAL"),
@@ -80,22 +77,24 @@ def seed_demo_users() -> None:
         ("auditor", "auditor123", Role.AUDITOR, "CONFIDENTIAL"),
     ]
     for username, password, role, clearance in demo:
-        _USERS[username] = {
-            "username": username,
-            "hashed_password": hash_password(password),
-            "role": role,
-            "clearance": clearance,
-        }
+        new_user = User(
+            username=username,
+            hashed_password=hash_password(password),
+            role=role.value,
+            clearance=clearance,
+        )
+        session.add(new_user)
+    session.commit()
 
 
-def authenticate_user(username: str, password: str) -> TokenUser | None:
+def authenticate_user(session: Session, username: str, password: str) -> TokenUser | None:
     """Return the user if the password matches, otherwise None."""
-    record = _USERS.get(username)
-    if not record:
+    db_user = session.exec(select(User).where(User.username == username)).first()
+    if not db_user:
         return None
-    if not verify_password(password, record["hashed_password"]):
+    if not verify_password(password, db_user.hashed_password):
         return None
-    return TokenUser(username=username, role=record["role"], clearance=record["clearance"])
+    return TokenUser(username=db_user.username, role=Role(db_user.role), clearance=db_user.clearance)
 
 
 def create_access_token(user: TokenUser) -> str:

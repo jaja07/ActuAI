@@ -1,24 +1,39 @@
 import React, { useState } from 'react';
 import { Edit2, X, Check, ArrowRight, Mail, GitCompare, ShieldAlert, Undo2 } from 'lucide-react';
+import { ValidationTask } from '../types';
+import { fetchWithAuth } from '../api';
 
 interface SapUpdateViewProps {
   onStatusChange?: (statusMessage: string, success: boolean) => void;
+  activeTask?: ValidationTask;
 }
 
-export default function SapUpdateView({ onStatusChange }: SapUpdateViewProps) {
+export default function SapUpdateView({ onStatusChange, activeTask }: SapUpdateViewProps) {
   const [decision, setDecision] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
-  const handleApprove = () => {
-    setDecision('approved');
-    if (onStatusChange) {
-      onStatusChange('SAP Date Update Request successfully approved. System scheduled synchronization.', true);
+  const handleApprove = async () => {
+    if (!activeTask) return;
+    try {
+      await fetchWithAuth(`/tasks/${activeTask.id}/approve`, { method: 'POST' });
+      setDecision('approved');
+      if (onStatusChange) {
+        onStatusChange('SAP Date Update Request successfully approved. System scheduled synchronization.', true);
+      }
+    } catch (err: any) {
+      if (onStatusChange) onStatusChange(`Approval failed: ${err.message}`, false);
     }
   };
 
-  const handleReject = () => {
-    setDecision('rejected');
-    if (onStatusChange) {
-      onStatusChange('SAP Date Update Request has been rejected. Dispatched override back to supplier.', false);
+  const handleReject = async () => {
+    if (!activeTask) return;
+    try {
+      await fetchWithAuth(`/tasks/${activeTask.id}/reject`, { method: 'POST' });
+      setDecision('rejected');
+      if (onStatusChange) {
+        onStatusChange('SAP Date Update Request has been rejected. Dispatched override back to supplier.', true);
+      }
+    } catch (err: any) {
+      if (onStatusChange) onStatusChange(`Rejection failed: ${err.message}`, false);
     }
   };
 

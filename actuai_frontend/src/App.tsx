@@ -5,7 +5,24 @@
 
 import Dashboard from './components/Dashboard';
 
-export default function App() {
+import { AuthProvider, useAuth } from './AuthContext';
+import Login from './components/Login';
+
+function MainApp() {
+  const { token } = useAuth();
+  
+  if (!token) {
+    return <Login />;
+  }
+
   return <Dashboard />;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
 }
 

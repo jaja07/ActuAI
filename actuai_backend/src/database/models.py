@@ -165,6 +165,19 @@ class AuditLog(SQLModel, table=True):
     entry_hash: str = ""              # hash of this entry (computed on insert)
 
 
+class User(SQLModel, table=True):
+    """
+    Operational user account. Replaces the in-memory dictionary.
+    """
+    __tablename__ = "users"  # type: ignore
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
+    hashed_password: str
+    role: str = "engineer"
+    clearance: str = "INTERNAL"
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class SentEmail(SQLModel, table=True):
     __tablename__ = "sent_emails"  # type: ignore
     id: Optional[int] = Field(default=None, primary_key=True)

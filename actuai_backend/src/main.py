@@ -17,7 +17,7 @@ from prometheus_client import Counter, Histogram, make_asgi_app
 from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from api.routers import auth, health, hitl, triggers
+from api.routers import auth, health, hitl, triggers, users
 from config import settings
 from database.connection import engine, init_db
 from etl.sap_connector import SAPConnector
@@ -53,7 +53,9 @@ def on_startup():
     print("Démarrage du backend ActuAI...")
     log.info("Starting ActuAI backend (env=%s)", settings.ENV)
     init_db()
-    seed_demo_users()
+    
+    with Session(engine) as session:
+        seed_demo_users(session)
 
     app.state.etl_stop = None
     if settings.ETL_AUTO_START:
@@ -106,13 +108,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE", "PUT"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 # ---- Routers --------------------------------------------------------------
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(triggers.router)
 app.include_router(hitl.router)
 

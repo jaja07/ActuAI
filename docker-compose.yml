@@ -108,6 +108,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # ----------------------------------------------------
+  # FRONTEND : React Dashboard (Human-in-the-Loop)
+  # ----------------------------------------------------
+  actuai-frontend:
+    build: ./actuai_frontend
+    container_name: actuai-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_BACKEND_URL=http://actuai-backend:8000
+    depends_on:
+      - actuai-backend
+
 volumes:
   # Déclaration des volumes nommés pour la persistance des données
   # Si tu coupes les conteneurs, les données ne seront pas perdues

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ViewType } from '../types';
+import { ViewType, ValidationTask } from '../types';
 import SapUpdateView from './SapUpdateView';
 import AogAlertView from './AogAlertView';
 import RagSynthesisView from './RagSynthesisView';
@@ -7,11 +7,13 @@ import { ShieldCheck, ServerCrash } from 'lucide-react';
 
 interface TaskDetailsPaneProps {
   activeViewId: ViewType;
+  activeTask?: ValidationTask;
   onStatusChange: (statusMessage: string, success: boolean) => void;
 }
 
 export default function TaskDetailsPane({
   activeViewId,
+  activeTask,
   onStatusChange
 }: TaskDetailsPaneProps) {
   return (
@@ -20,11 +22,11 @@ export default function TaskDetailsPane({
       {(() => {
         switch (activeViewId) {
           case 'sap':
-            return <SapUpdateView onStatusChange={onStatusChange} />;
+            return <SapUpdateView onStatusChange={onStatusChange} activeTask={activeTask} />;
           case 'aog':
-            return <AogAlertView onStatusChange={onStatusChange} />;
+            return <AogAlertView onStatusChange={onStatusChange} activeTask={activeTask} />;
           case 'rag':
-            return <RagSynthesisView />;
+            return <RagSynthesisView onStatusChange={onStatusChange} activeTask={activeTask} />;
           default:
             return (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-on-surface-variant font-sans">
