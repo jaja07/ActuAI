@@ -62,6 +62,30 @@ class DatalakeProductionSchedule(SQLModel, table=True):
     assembly_line_date: date
 
 
+class DatalakeGoodsReceipt(SQLModel, table=True):
+    """Table miroir des réceptions physiques dans le Datalake."""
+    __tablename__ = "goods_receipts"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    po_number: str = Field(index=True)
+    part_reference: str
+    reception_date: date
+    actual_serial_number: Optional[str] = Field(default=None)
+    synced_at: datetime = Field(default_factory=utcnow)
+
+
+class DatalakeQualityNotification(SQLModel, table=True):
+    """Table miroir des fiches de non-conformité (FNC) dans le Datalake."""
+    __tablename__ = "quality_notifications"  # type: ignore
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ncr_number: str = Field(index=True, unique=True, description="Numéro FNC")
+    po_number: str = Field(index=True)
+    defect_type: str
+    report_8d_status: str = "PENDING"
+    synced_at: datetime = Field(default_factory=utcnow)
+
+
 class Supplier(SQLModel, table=True):
     __tablename__ = "suppliers"  # type: ignore
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -155,3 +179,5 @@ class SentEmail(SQLModel, table=True):
 # same SQLModel class is safe (no duplicate table is registered).
 PurchaseOrder = DatalakePurchaseOrder
 ProductionSchedule = DatalakeProductionSchedule
+GoodsReceipt = DatalakeGoodsReceipt
+QualityNotification = DatalakeQualityNotification

@@ -4,9 +4,11 @@ etl/sap_connector.py — The SAP / BAPI ETL connector (synchronous).
 WHAT THIS DOES
 --------------
 It queries the simulated SAP API (``actuai_mock_data`` -> sap_api/main.py) and
-copies the purchase orders into our PostgreSQL datalake. This is a READ path.
-Writing back to SAP (pushing a new delivery date) happens only after human
-validation — see ``SAPConnector.push_delivery_date`` called from the HITL router.
+mirrors all 4 BAPI entities into our PostgreSQL datalake: purchase orders,
+production schedules, goods receipts and quality notifications (NCRs). This is
+a READ path. Writing back to SAP (pushing a new delivery date) happens only
+after human validation — see ``SAPConnector.push_delivery_date`` called from
+the HITL router.
 
 It keeps the team's simple functional entrypoints (``extract_and_load_purchase_orders``
 and ``run_pipeline`` for ``python -m etl.sap_connector``) and adds a robust,
@@ -22,7 +24,13 @@ from sqlmodel import Session, select
 
 from config import settings
 from database.connection import engine, init_db
-from database.models import DatalakePurchaseOrder, Supplier
+from database.models import (
+    DatalakeGoodsReceipt,
+    DatalakeProductionSchedule,
+    DatalakePurchaseOrder,
+    DatalakeQualityNotification,
+    Supplier,
+)
 from security import audit
 
 
@@ -46,6 +54,10 @@ class SAPConnector:
                 time.sleep(2 ** attempt)  # 1s, 2s, 4s
         raise RuntimeError(f"BAPI GET {url} a échoué après {retries} essais : {last_error}")
 
+    @staticmethod
+    def _as_date(value):
+        return date.fromisoformat(value) if isinstance(value, str) else value
+
     # ---- upsert one purchase order into the datalake ---------------------
     def _upsert_po(self, session: Session, r: dict) -> None:
         existing = session.exec(
@@ -54,15 +66,12 @@ class SAPConnector:
             )
         ).first()
 
-        edate = r.get("expected_delivery_date")
-        expected = date.fromisoformat(edate) if isinstance(edate, str) else edate
-
         fields = dict(
             po_number=r["po_number"],
             part_reference=r["part_reference"],
             supplier_name=r.get("supplier_name", ""),
             quantity=int(r.get("quantity") or 0),
-            expected_delivery_date=expected,
+            expected_delivery_date=self._as_date(r.get("expected_delivery_date")),
             status=r.get("status", "OPEN"),
             serial_number_expected=r.get("serial_number_expected"),
         )
@@ -91,11 +100,98 @@ class SAPConnector:
                 session.add(Supplier(sap_supplier_id=name, name=name))
         return len(names)
 
+    # ---- upsert one production schedule entry -----------------------------
+    def _upsert_schedule(self, session: Session, r: dict) -> None:
+        existing = session.exec(
+            select(DatalakeProductionSchedule).where(
+                DatalakeProductionSchedule.part_reference == r["part_reference"]
+            )
+        ).first()
+
+        fields = dict(
+            part_reference=r["part_reference"],
+            aircraft_program=r["aircraft_program"],
+            assembly_line_date=self._as_date(r["assembly_line_date"]),
+        )
+        if existing:
+            for k, v in fields.items():
+                setattr(existing, k, v)
+            session.add(existing)
+        else:
+            session.add(DatalakeProductionSchedule(**fields))
+
+    def sync_production_schedules(self, session: Session) -> int:
+        """Pull the Airbus assembly line schedule and upsert it (idempotent)."""
+        rows = self._get("/api/bapi/production-schedules/")
+        for r in rows:
+            self._upsert_schedule(session, r)
+        return len(rows)
+
+    # ---- upsert one goods receipt ------------------------------------------
+    def _upsert_receipt(self, session: Session, r: dict) -> None:
+        existing = session.exec(
+            select(DatalakeGoodsReceipt).where(
+                DatalakeGoodsReceipt.po_number == r["po_number"]
+            )
+        ).first()
+
+        fields = dict(
+            po_number=r["po_number"],
+            part_reference=r["part_reference"],
+            reception_date=self._as_date(r["reception_date"]),
+            actual_serial_number=r.get("actual_serial_number"),
+        )
+        if existing:
+            for k, v in fields.items():
+                setattr(existing, k, v)
+            session.add(existing)
+        else:
+            session.add(DatalakeGoodsReceipt(**fields))
+
+    def sync_goods_receipts(self, session: Session) -> int:
+        """Pull every physical goods receipt and upsert it (idempotent)."""
+        rows = self._get("/api/bapi/goods-receipts/")
+        for r in rows:
+            self._upsert_receipt(session, r)
+        return len(rows)
+
+    # ---- upsert one quality notification (NCR) -----------------------------
+    def _upsert_ncr(self, session: Session, r: dict) -> None:
+        existing = session.exec(
+            select(DatalakeQualityNotification).where(
+                DatalakeQualityNotification.ncr_number == r["ncr_number"]
+            )
+        ).first()
+
+        fields = dict(
+            ncr_number=r["ncr_number"],
+            po_number=r["po_number"],
+            defect_type=r["defect_type"],
+            report_8d_status=r.get("report_8d_status", "PENDING"),
+        )
+        if existing:
+            for k, v in fields.items():
+                setattr(existing, k, v)
+            session.add(existing)
+        else:
+            session.add(DatalakeQualityNotification(**fields))
+
+    def sync_quality_notifications(self, session: Session) -> int:
+        """Pull every non-conformance report (NCR) and upsert it (idempotent)."""
+        rows = self._get("/api/bapi/quality-notifications/")
+        for r in rows:
+            self._upsert_ncr(session, r)
+        return len(rows)
+
     def full_sync(self, session: Session) -> dict:
-        """Full sync: purchase orders + derived suppliers. Used by ETL and boot."""
-        pos = self.sync_purchase_orders(session)
-        suppliers = self.derive_suppliers(session)
-        result = {"purchase_orders": pos, "suppliers": suppliers}
+        """Full sync: all 4 BAPI entities + derived suppliers. Used by ETL and boot."""
+        result = {
+            "purchase_orders": self.sync_purchase_orders(session),
+            "production_schedules": self.sync_production_schedules(session),
+            "goods_receipts": self.sync_goods_receipts(session),
+            "quality_notifications": self.sync_quality_notifications(session),
+            "suppliers": self.derive_suppliers(session),
+        }
         audit.record(session, actor="sap_connector", action="SAP_SYNC", detail=result)
         return result
 
@@ -112,23 +208,26 @@ class SAPConnector:
 # ---------------------------------------------------------------------------
 
 def extract_and_load_purchase_orders() -> None:
-    print("🔄 Extraction des commandes d'achat depuis SAP (BAPI)...")
+    print("Extraction des commandes d'achat depuis SAP (BAPI)...")
     connector = SAPConnector()
     try:
         with Session(engine) as session:
-            count = connector.sync_purchase_orders(session)
-            connector.derive_suppliers(session)
+            result = connector.full_sync(session)
             session.commit()
-        print(f"✅ {count} commandes synchronisées avec succès dans PostgreSQL.")
+        print(
+            f"{result['purchase_orders']} commandes, {result['production_schedules']} plannings, "
+            f"{result['goods_receipts']} réceptions, {result['quality_notifications']} FNC et "
+            f"{result['suppliers']} fournisseurs synchronisés avec succès dans PostgreSQL."
+        )
     except (requests.exceptions.RequestException, RuntimeError) as e:
-        print(f"❌ Erreur de connexion au mock SAP : {e}")
+        print(f"Erreur de connexion au mock SAP : {e}")
 
 
 def run_pipeline() -> None:
-    print("🚀 Démarrage du pipeline ETL ActuAI...")
+    print("Démarrage du pipeline ETL ActuAI...")
     init_db()
     extract_and_load_purchase_orders()
-    print("🏁 Pipeline terminé.")
+    print("Pipeline terminé.")
 
 
 if __name__ == "__main__":
