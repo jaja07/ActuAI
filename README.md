@@ -43,7 +43,7 @@ ActuAI/
 │   # Contains the ETL pipelines, the PostgreSQL/Qdrant connectors, 
 │   # and the LangGraph Multi-Agent system (Supervisor, Transactional, Investigative).
 │
-└── actuai_frontend/            # 💻 MODULE 3: User Interface (WIP)
+└── actuai_frontend/            # 💻 MODULE 3: User Interface
     # A comprehensive React-based frontend providing the Human-in-the-Loop 
     # validation dashboard for aerospace experts to review AI-drafted actions.
 
@@ -104,29 +104,39 @@ uv run uvicorn actuai_mock_data.sap_api.main:app --port 8080 --reload
 **B. Start the Backend (LangGraph & ETL):**
 
 ```bash
-# In a new terminal tab
-uv run uvicorn actuai_backend.src.main:app --port 8000 --reload
+# In a new terminal tab — run from the backend's import root (src/)
+cd actuai_backend/src
+uv run uvicorn main:app --port 8000 --reload
 
 ```
 
-**C. Start the Frontend (Coming Soon):**
+**C. Start the Frontend (React HITL dashboard):**
 
 ```bash
 # In a new terminal tab
 cd actuai_frontend
-npm run dev
+npm install
+npm run dev   # Vite dev server; proxies /api to the backend on :8000
 
 ```
 
 ---
 
-## 🐳 Full Docker Deployment
+## 🐳 Docker Deployment
 
-For staging or production-like environments, the entire system (Databases + Microservices) can be spun up using Docker.
-
-*(Note: Dockerfiles for the backend and frontend are actively being integrated into the global compose network).*
+The root `docker-compose.yml` brings up the data layer (PostgreSQL + Qdrant), the
+simulated SAP ERP (`actuai_mock_data`) and the orchestrator backend in one command:
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build -d
-
+docker compose up --build -d
 ```
+
+This starts:
+
+* `actuai-postgres` (`:5432`) and `actuai-qdrant` (`:6333`/`:6334`) — the datalake
+* `actuai-mock-data` (`:8080`) — the simulated SAP BAPI (seeded with Faker data)
+* `actuai-backend` (`:8000`) — the FastAPI orchestrator (`USE_MOCK_LLM=true`,
+  `ETL_AUTO_START=true`, so it pulls from the mock SAP on boot)
+
+The React frontend is run on the host with Vite (`cd actuai_frontend && npm run dev`),
+whose proxy forwards `/api` to the backend published on `:8000`.

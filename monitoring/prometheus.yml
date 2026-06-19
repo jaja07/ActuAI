@@ -1,0 +1,16 @@
+# prometheus.yml — what to scrape and how often.
+# Prometheus pulls the /metrics endpoint the backend exposes and stores the
+# time series; Grafana then graphs them.
+
+global:
+  scrape_interval: 15s          # collect metrics every 15 seconds
+
+scrape_configs:
+  - job_name: actuai-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]   # reached over the private network
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

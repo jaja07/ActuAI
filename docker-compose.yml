@@ -1,3 +1,12 @@
+# docker-compose.yml — ActuAI stack.
+#
+#   docker compose up --build
+#
+# Brings up the data layer (PostgreSQL + Qdrant), the simulated SAP ERP
+# (actuai_mock_data) and the orchestrator backend. The React frontend is run
+# on the host with Vite in dev (`npm run dev`), whose proxy forwards /api to the
+# backend published on :8000 — see actuai_frontend/vite.config.js.
+
 services:
   # ----------------------------------------------------
   # DATALAKE RELATIONNEL : PostgreSQL
@@ -32,6 +41,63 @@ services:
       - "6334:6334" # Port gRPC (Optimisé pour l'ingestion massive)
     volumes:
       - qdrant_data:/qdrant/storage
+
+  # ----------------------------------------------------
+  # ERP SIMULÉ : Mock SAP BAPI (FastAPI + SQLite, seedé via Faker)
+  # ----------------------------------------------------
+  actuai-mock-data:
+    build:
+      context: .
+      dockerfile: actuai_mock_data/Dockerfile
+    container_name: actuai-mock-data
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: "sqlite:///./sap_mock.db"
+      MOCK_NETWORK_DRIVE_DIR: /app/output/network_drives
+      MOCK_EXCEL_DIR: /app/output/excel_shares
+      WEBHOOK_TARGET_URL: http://actuai-backend:8000/api/ingest/email
+    # Seed the SQLite DB (Faker), then serve the BAPI on 8080.
+    command: >
+      sh -c "python -m actuai_mock_data.sap_api.seeder &&
+             python -m uvicorn actuai_mock_data.sap_api.main:app --host 0.0.0.0 --port 8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/docs').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "8080:8080"
+
+  # ----------------------------------------------------
+  # ORCHESTRATEUR : Backend ActuAI (FastAPI + agents + HITL)
+  # ----------------------------------------------------
+  actuai-backend:
+    build: ./actuai_backend
+    container_name: actuai-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Point the backend at the in-network services (override .env localhost).
+      DATABASE_URL_BACKEND: postgresql://actuai_user:actuai_password@actuai-postgres:5432/actuai_db
+      QDRANT_URL: http://actuai-qdrant:6333
+      BAPI_BASE_URL: http://actuai-mock-data:8080
+      # Pull from the mock SAP on boot and keep polling.
+      ETL_AUTO_START: "true"
+      # Run with deterministic stub LLMs so no Ollama / cloud key is required.
+      USE_MOCK_LLM: "true"
+    depends_on:
+      actuai-postgres:
+        condition: service_healthy
+      actuai-mock-data:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    # Lets the container reach an Ollama instance running on the host (if used).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   # Déclaration des volumes nommés pour la persistance des données
