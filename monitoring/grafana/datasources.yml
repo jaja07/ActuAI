@@ -1,0 +1,9 @@
+# Grafana auto-provisions this Prometheus datasource on startup, so no manual
+# clicking in the UI. Grafana reaches Prometheus over the private network.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true

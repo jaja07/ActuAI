@@ -1,0 +1,29 @@
+.wrap { display: inline-flex; align-items: center; gap: var(--sp-2); }
+
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.label {
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pending { background: var(--pending-led); color: var(--pending-led); }
+.ok      { background: var(--ok-led); color: var(--ok-led); }
+.danger  { background: var(--danger-led); color: var(--danger-led); }
+.info    { background: var(--primary); color: var(--primary); }
+
+.pulse { animation: pulse 1.8s var(--ease) infinite; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent); }
+}

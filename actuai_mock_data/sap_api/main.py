@@ -62,8 +62,20 @@ def update_delivery_date(po_number: str, new_date: str, session: Session = Depen
     order = session.exec(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)).first()
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
-    
-    order.expected_delivery_date = new_date  # type: ignore
+
+    # BUGFIX: the SQLite DATE column only accepts a Python `date`, not the raw
+    # query-string. Assigning the string raised StatementError (500) and crashed
+    # the agent write-back (Mission 1 & 2). Parse it; reject bad input as 400.
+    try:
+        from datetime import date
+        parsed_date = date.fromisoformat(new_date)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Format de date invalide: '{new_date}' (attendu YYYY-MM-DD)",
+        )
+
+    order.expected_delivery_date = parsed_date
     session.add(order)
     session.commit()
     session.refresh(order)

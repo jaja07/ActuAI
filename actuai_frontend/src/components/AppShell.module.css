@@ -1,0 +1,71 @@
+.shell { min-height: 100vh; }
+
+/* Skip link: hidden until focused, then pinned top-left. */
+.skip {
+  position: absolute;
+  left: var(--sp-3);
+  top: -100px;
+  z-index: 80;
+  background: var(--primary);
+  color: var(--primary-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: top var(--dur) var(--ease);
+}
+.skip:focus { top: var(--sp-3); }
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--header-h);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.inner {
+  max-width: var(--container);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 var(--sp-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.brand { display: inline-flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.logo {
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--blue-50);
+  color: var(--primary);
+  flex: none;
+}
+.brandText { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.name { font-weight: 750; font-size: var(--fs-16); letter-spacing: -0.01em; }
+.tag {
+  font-size: var(--fs-11);
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.identity { display: inline-flex; align-items: center; gap: var(--sp-3); }
+.user { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.username { font-size: var(--fs-13); font-weight: 600; color: var(--text-secondary); }
+
+.main {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--sp-5) var(--sp-16);
+}
+
+@media (max-width: 560px) {
+  .username { display: none; }       /* keep the role badge, drop the name */
+  .tag { display: none; }
+  .main { padding-top: var(--sp-6); }
+}

@@ -1,0 +1,14 @@
+.strip {
+  list-style: none;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.meta { font-size: var(--fs-13); font-weight: 600; color: var(--text-secondary); }
+
+.summary { font-size: var(--fs-15, 0.9375rem); line-height: var(--lh-snug); color: var(--text); }
+
+.actions { display: flex; gap: var(--sp-2); }

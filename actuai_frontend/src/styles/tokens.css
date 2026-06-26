@@ -1,0 +1,212 @@
+/* =============================================================================
+   tokens.css — ActuAI design system foundation
+   -----------------------------------------------------------------------------
+   The single source of truth for color, type, spacing, radius, elevation and
+   motion. Everything else in the UI references these custom properties, so a
+   rebrand or a dark-mode tweak happens here and nowhere else.
+
+   Visual direction: an aerospace control-tower console. Titanium neutrals, a
+   confident aerospace blue, and unambiguous signal colors (amber = waiting,
+   green = done, red = stop). Monospace is used as an "instrument readout" for
+   IDs and machine payloads.
+   ========================================================================== */
+
+:root {
+  /* ---- Titanium neutral scale ------------------------------------------- */
+  --ti-50:  #f6f8fa;
+  --ti-100: #eef1f4;
+  --ti-200: #dee4ea;
+  --ti-300: #c7d0d9;
+  --ti-400: #9aa7b4;
+  --ti-500: #6b7986;
+  --ti-600: #4a5763;
+  --ti-700: #33414d;
+  --ti-800: #1e2a35;
+  --ti-900: #0b1b2b;
+
+  /* ---- Brand + signal --------------------------------------------------- */
+  --blue-50:  #e9f1fe;
+  --blue-500: #1763e6;   /* aerospace blue — primary action, "writes to SAP" */
+  --blue-600: #1453c4;
+  --blue-700: #103f97;
+
+  --amber-50:  #fff4dd;
+  --amber-500: #e8a317;  /* pending / caution */
+  --amber-700: #8a5a00;
+
+  --green-50:  #dcf5e8;
+  --green-500: #18a05c;  /* approved / executed */
+  --green-700: #0e7a4b;
+
+  --red-50:  #fbe3e0;
+  --red-500: #e04434;    /* reject / danger */
+  --red-700: #b22f22;
+
+  /* ---- Semantic roles (light theme) ------------------------------------ */
+  --bg:            var(--ti-100);
+  --bg-elevated:   #ffffff;
+  --surface:       #ffffff;
+  --surface-sunken:var(--ti-50);
+  --border:        var(--ti-200);
+  --border-strong: var(--ti-300);
+
+  --text:          var(--ti-900);
+  --text-secondary:var(--ti-600);
+  --text-muted:    var(--ti-500);
+  --text-inverse:  #ffffff;
+
+  --primary:       var(--blue-500);
+  --primary-hover: var(--blue-600);
+  --primary-text:  #ffffff;
+  --focus-ring:    color-mix(in srgb, var(--blue-500) 55%, transparent);
+
+  --pending-fg: var(--amber-700);
+  --pending-bg: var(--amber-50);
+  --pending-led: var(--amber-500);
+
+  --ok-fg: var(--green-700);
+  --ok-bg: var(--green-50);
+  --ok-led: var(--green-500);
+
+  --danger-fg: var(--red-700);
+  --danger-bg: var(--red-50);
+  --danger-led: var(--red-500);
+
+  /* ---- Typography ------------------------------------------------------- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "SF Mono",
+    Menlo, Consolas, "Liberation Mono", monospace;
+
+  --fs-11: 0.6875rem;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-18: 1.125rem;
+  --fs-22: 1.375rem;
+  --fs-28: 1.75rem;
+  --fs-36: 2.25rem;
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-normal: 1.55;
+
+  /* tracking */
+  --track-eyebrow: 0.14em;
+
+  /* ---- Spacing scale (4px base) ---------------------------------------- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+
+  /* ---- Radius + elevation ---------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(11, 27, 43, 0.06), 0 1px 3px rgba(11, 27, 43, 0.08);
+  --shadow-md: 0 2px 6px rgba(11, 27, 43, 0.08), 0 8px 24px rgba(11, 27, 43, 0.08);
+  --shadow-lg: 0 12px 40px rgba(11, 27, 43, 0.18);
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --container: 1040px;
+  --header-h: 60px;
+}
+
+/* ---- Dark theme: honour the OS preference, no toggle needed ------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:            #0b1320;
+    --bg-elevated:   #121c2b;
+    --surface:       #121c2b;
+    --surface-sunken:#0e1828;
+    --border:        #243345;
+    --border-strong: #31435a;
+
+    --text:          #e6ecf3;
+    --text-secondary:#aab8c6;
+    --text-muted:    #7d8d9f;
+
+    --primary:       #3b82f6;
+    --primary-hover: #5a96f8;
+    --focus-ring:    color-mix(in srgb, #3b82f6 60%, transparent);
+
+    --pending-bg: color-mix(in srgb, var(--amber-500) 16%, transparent);
+    --pending-fg: #f4c66a;
+    --ok-bg: color-mix(in srgb, var(--green-500) 16%, transparent);
+    --ok-fg: #6fd9a3;
+    --danger-bg: color-mix(in srgb, var(--red-500) 16%, transparent);
+    --danger-fg: #f29a90;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-md: 0 8px 24px rgba(0,0,0,0.45);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+  }
+}
+
+/* ============================ Base reset =============================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+* { margin: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  line-height: var(--lh-normal);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 { line-height: var(--lh-tight); font-weight: 650; letter-spacing: -0.01em; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+a { color: var(--primary); }
+
+/* A consistent, highly visible keyboard focus ring across the whole app. */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+::selection { background: color-mix(in srgb, var(--primary) 25%, transparent); }
+
+/* Respect users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Utility: eyebrow label (uppercase, tracked) used for instrument labels. */
+.eyebrow {
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

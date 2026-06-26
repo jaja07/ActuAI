@@ -1,0 +1,23 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-6);
+}
+
+.iconWrap {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.title { font-size: var(--fs-18); font-weight: 650; }
+.desc { font-size: var(--fs-14); color: var(--text-secondary); max-width: 40ch; }
+.action { margin-top: var(--sp-2); }

@@ -1,0 +1,13 @@
+.block { display: inline-flex; align-items: center; justify-content: center; }
+.inline { display: inline-flex; vertical-align: -0.2em; }
+
+.spinner { animation: spin 0.8s linear infinite; }
+.track { stroke: color-mix(in srgb, currentColor 18%, transparent); }
+.head {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-dasharray: 56;
+  stroke-dashoffset: 38;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

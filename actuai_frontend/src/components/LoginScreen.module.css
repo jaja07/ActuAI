@@ -1,0 +1,43 @@
+.screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6);
+  background:
+    radial-gradient(1200px 500px at 50% -10%, color-mix(in srgb, var(--primary) 10%, transparent), transparent),
+    var(--bg);
+}
+
+.card { width: 100%; max-width: 400px; padding: var(--sp-8); }
+
+.brand { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.logo {
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--blue-50); color: var(--primary);
+  flex: none;
+}
+.title { font-size: var(--fs-22); font-weight: 700; }
+
+.lede { font-size: var(--fs-14); color: var(--text-secondary); margin-bottom: var(--sp-6); }
+
+.form { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.demo {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.demo code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  white-space: nowrap;
+}

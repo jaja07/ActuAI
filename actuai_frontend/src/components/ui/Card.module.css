@@ -1,0 +1,24 @@
+.card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.interactive { transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.interactive:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+/* Status rail: a colored left edge that reads at a glance from across a room. */
+.railed { overflow: hidden; }
+.railed::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--rail-color, var(--border-strong));
+}
+.rail_pending { --rail-color: var(--pending-led); }
+.rail_ok      { --rail-color: var(--ok-led); }
+.rail_danger  { --rail-color: var(--danger-led); }
+.rail_info    { --rail-color: var(--primary); }

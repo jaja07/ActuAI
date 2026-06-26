@@ -1,0 +1,29 @@
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+.icon { flex: none; margin-top: 1px; }
+.body { flex: 1; min-width: 0; }
+.title { font-weight: 650; font-size: var(--fs-14); }
+.text { font-size: var(--fs-13); color: inherit; opacity: 0.9; }
+
+.close {
+  flex: none;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  opacity: 0.7;
+}
+.close:hover { opacity: 1; background: color-mix(in srgb, currentColor 12%, transparent); }
+
+.info    { background: var(--blue-50); color: var(--blue-700); border-color: color-mix(in srgb, var(--primary) 25%, transparent); }
+.success { background: var(--ok-bg); color: var(--ok-fg); border-color: color-mix(in srgb, var(--ok-led) 35%, transparent); }
+.warning { background: var(--pending-bg); color: var(--pending-fg); border-color: color-mix(in srgb, var(--pending-led) 35%, transparent); }
+.danger  { background: var(--danger-bg); color: var(--danger-fg); border-color: color-mix(in srgb, var(--danger-led) 35%, transparent); }

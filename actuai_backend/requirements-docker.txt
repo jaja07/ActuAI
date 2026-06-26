@@ -1,0 +1,20 @@
+# Light runtime deps for the container image.
+#
+# Deliberately EXCLUDES the heavy RAG stack (sentence-transformers -> torch +
+# CUDA, langchain, qdrant-client, pypdf). Those are only needed by the optional
+# document-indexing script (etl/document_indexer.py); the API boots without them
+# and the Investigative agent falls back to an in-memory retriever. This keeps
+# the image ~200 MB and the build a few seconds instead of pulling ~4 GB of CUDA.
+#
+# Full deps (incl. RAG) remain in pyproject.toml for local `uv sync`.
+fastapi>=0.137.1
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.20
+prometheus-client>=0.21.1
+sqlmodel>=0.0.38
+psycopg2-binary>=2.9.12
+pyjwt>=2.10.1
+bcrypt>=4.2.1
+pydantic-settings>=2.14.1
+python-dotenv>=1.2.2
+requests>=2.34.2
