@@ -1,0 +1,261 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+@import "tailwindcss";
+
+/* Class-based dark mode: `.dark` on <html> activates the dark tokens below
+   and enables the `dark:` variant for one-off overrides. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Design tokens — aerospace-blue palette, light + dark.
+   Raw values live on :root / .dark; @theme inline maps them onto the
+   Material-3-style token names the components already use, so toggling the
+   `.dark` class re-themes the whole app at runtime.
+--------------------------------------------------------------------------- */
+:root {
+  /* Brand */
+  --app-primary: #1e4fc2;
+  --app-on-primary: #ffffff;
+  --app-primary-container: #dbe4ff;
+  --app-on-primary-container: #12315e;
+  --app-inverse-primary: #b3c5ff;
+  --app-secondary: #46608a;
+  --app-on-secondary: #ffffff;
+  --app-secondary-container: #d9e3f8;
+  --app-on-secondary-container: #17335c;
+  --app-tertiary: #175d63;
+  --app-on-tertiary: #ffffff;
+  --app-tertiary-container: #c2e8ec;
+  --app-on-tertiary-container: #0b3f44;
+
+  /* Surfaces (slate-tinted) */
+  --app-surface: #f8fafc;
+  --app-surface-bright: #f8fafc;
+  --app-surface-dim: #d9dee5;
+  --app-surface-container-lowest: #ffffff;
+  --app-surface-container-low: #f1f5f9;
+  --app-surface-container: #e9eef4;
+  --app-surface-container-high: #e2e8f0;
+  --app-surface-container-highest: #d9e1ea;
+  --app-surface-variant: #e2e8f0;
+  --app-on-surface: #16202e;
+  --app-on-surface-variant: #4b5768;
+  --app-inverse-surface: #2b3444;
+  --app-inverse-on-surface: #eff3f8;
+  --app-background: #f8fafc;
+  --app-on-background: #16202e;
+  --app-surface-tint: #1e4fc2;
+
+  /* Outline + error */
+  --app-outline: #6b7280;
+  --app-outline-variant: #cbd5e1;
+  --app-error: #ba1a1a;
+  --app-on-error: #ffffff;
+  --app-error-container: #ffdad6;
+  --app-on-error-container: #93000a;
+
+  /* Semantic status colors (single source of truth for pills/banners) */
+  --app-status-pending: #854d0e;
+  --app-status-pending-bg: #fef3c7;
+  --app-status-urgent: #93000a;
+  --app-status-urgent-bg: #ffdad6;
+  --app-status-success: #14532d;
+  --app-status-success-bg: #dcfce7;
+  --app-status-info: #12315e;
+  --app-status-info-bg: #dbe4ff;
+}
+
+.dark {
+  /* Brand */
+  --app-primary: #7da2ff;
+  --app-on-primary: #0f2557;
+  --app-primary-container: #2c4a8a;
+  --app-on-primary-container: #dbe4ff;
+  --app-inverse-primary: #1e4fc2;
+  --app-secondary: #aec6f0;
+  --app-on-secondary: #142f52;
+  --app-secondary-container: #2d456b;
+  --app-on-secondary-container: #d9e3f8;
+  --app-tertiary: #a2ced4;
+  --app-on-tertiary: #063338;
+  --app-tertiary-container: #1e4b50;
+  --app-on-tertiary-container: #c2e8ec;
+
+  /* Surfaces */
+  --app-surface: #0b1220;
+  --app-surface-bright: #131c2f;
+  --app-surface-dim: #0b1220;
+  --app-surface-container-lowest: #070d18;
+  --app-surface-container-low: #111a2c;
+  --app-surface-container: #16213a;
+  --app-surface-container-high: #1d2a45;
+  --app-surface-container-highest: #253349;
+  --app-surface-variant: #3b475c;
+  --app-on-surface: #e2e8f0;
+  --app-on-surface-variant: #9aa6ba;
+  --app-inverse-surface: #e2e8f0;
+  --app-inverse-on-surface: #1d2a45;
+  --app-background: #0b1220;
+  --app-on-background: #e2e8f0;
+  --app-surface-tint: #7da2ff;
+
+  /* Outline + error */
+  --app-outline: #8a93a3;
+  --app-outline-variant: #3b475c;
+  --app-error: #ffb4ab;
+  --app-on-error: #690005;
+  --app-error-container: #93000a;
+  --app-on-error-container: #ffdad6;
+
+  /* Semantic status colors */
+  --app-status-pending: #fcd34d;
+  --app-status-pending-bg: #43350a;
+  --app-status-urgent: #ffb4ab;
+  --app-status-urgent-bg: #5c1210;
+  --app-status-success: #86efac;
+  --app-status-success-bg: #10331d;
+  --app-status-info: #b3c5ff;
+  --app-status-info-bg: #1c3260;
+}
+
+@theme inline {
+  --color-primary: var(--app-primary);
+  --color-on-primary: var(--app-on-primary);
+  --color-primary-container: var(--app-primary-container);
+  --color-on-primary-container: var(--app-on-primary-container);
+  --color-inverse-primary: var(--app-inverse-primary);
+  --color-primary-fixed: var(--app-primary-container);
+  --color-primary-fixed-dim: var(--app-inverse-primary);
+  --color-on-primary-fixed: var(--app-on-primary-container);
+  --color-on-primary-fixed-variant: var(--app-on-primary-container);
+
+  --color-secondary: var(--app-secondary);
+  --color-on-secondary: var(--app-on-secondary);
+  --color-secondary-container: var(--app-secondary-container);
+  --color-on-secondary-container: var(--app-on-secondary-container);
+  --color-secondary-fixed: var(--app-secondary-container);
+  --color-secondary-fixed-dim: var(--app-secondary);
+  --color-on-secondary-fixed: var(--app-on-secondary-container);
+  --color-on-secondary-fixed-variant: var(--app-on-secondary-container);
+
+  --color-tertiary: var(--app-tertiary);
+  --color-on-tertiary: var(--app-on-tertiary);
+  --color-tertiary-container: var(--app-tertiary-container);
+  --color-on-tertiary-container: var(--app-on-tertiary-container);
+  --color-tertiary-fixed: var(--app-tertiary-container);
+  --color-tertiary-fixed-dim: var(--app-tertiary);
+  --color-on-tertiary-fixed: var(--app-on-tertiary-container);
+  --color-on-tertiary-fixed-variant: var(--app-on-tertiary-container);
+
+  --color-surface: var(--app-surface);
+  --color-surface-bright: var(--app-surface-bright);
+  --color-surface-dim: var(--app-surface-dim);
+  --color-surface-container-lowest: var(--app-surface-container-lowest);
+  --color-surface-container-low: var(--app-surface-container-low);
+  --color-surface-container: var(--app-surface-container);
+  --color-surface-container-high: var(--app-surface-container-high);
+  --color-surface-container-highest: var(--app-surface-container-highest);
+  --color-surface-variant: var(--app-surface-variant);
+  --color-on-surface: var(--app-on-surface);
+  --color-on-surface-variant: var(--app-on-surface-variant);
+  --color-inverse-surface: var(--app-inverse-surface);
+  --color-inverse-on-surface: var(--app-inverse-on-surface);
+  --color-background: var(--app-background);
+  --color-on-background: var(--app-on-background);
+  --color-surface-tint: var(--app-surface-tint);
+
+  --color-outline: var(--app-outline);
+  --color-outline-variant: var(--app-outline-variant);
+  --color-error: var(--app-error);
+  --color-on-error: var(--app-on-error);
+  --color-error-container: var(--app-error-container);
+  --color-on-error-container: var(--app-on-error-container);
+
+  --color-status-pending: var(--app-status-pending);
+  --color-status-pending-bg: var(--app-status-pending-bg);
+  --color-status-urgent: var(--app-status-urgent);
+  --color-status-urgent-bg: var(--app-status-urgent-bg);
+  --color-status-success: var(--app-status-success);
+  --color-status-success-bg: var(--app-status-success-bg);
+  --color-status-info: var(--app-status-info);
+  --color-status-info-bg: var(--app-status-info-bg);
+
+  --radius-DEFAULT: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  --spacing-margin: 24px;
+  --spacing-gutter: 16px;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-code-md: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-title-md: "Inter", sans-serif;
+  --font-headline-lg: "Inter", sans-serif;
+  --font-headline-md: "Inter", sans-serif;
+  --font-display-lg: "Inter", sans-serif;
+  --font-label-md: "Inter", sans-serif;
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@utility text-code-md {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+@utility text-body-md {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility text-body-lg {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility text-title-md {
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+@utility text-headline-lg {
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+@utility text-headline-md {
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+@utility text-display-lg {
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+@utility text-label-md {
+  font-size: 12px;
+  line-height: 1.0;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--app-surface);
+  color: var(--app-on-surface);
+}

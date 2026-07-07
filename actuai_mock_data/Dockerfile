@@ -24,6 +24,7 @@ EXPOSE 8080
 ENV DATABASE_URL="sqlite:///./sap_mock.db"
 ENV MOCK_NETWORK_DRIVE_DIR="./output/network_drives"
 ENV MOCK_EXCEL_DIR="./output/excel_shares"
+ENV WEBHOOK_TARGET_URL="http://actuai-backend:8000/api/ingest/email"
 
 # 4. Démarrage de l'API avec le module Python standard
 CMD ["python", "-m", "uvicorn", "sap_api.main:app", "--host", "0.0.0.0", "--port", "8080"]

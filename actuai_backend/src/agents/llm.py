@@ -3,10 +3,11 @@ agents/llm.py — One simple interface to every model (synchronous).
 
 THE PROBLEM THIS SOLVES
 -----------------------
-The report uses THREE different models on TWO different backends:
-  - Supervisor      -> Llama 3.1 8B, LOCAL via Ollama
-  - Transactional   -> Mistral-Nemo 12B, CLOUD (NVIDIA NIM / Azure)
-  - Investigative   -> Llama 3.1 70B, CLOUD
+The system uses THREE different models, all served by NVIDIA NIM through its
+OpenAI-compatible endpoint (``CLOUD_LLM_BASE_URL``):
+  - Supervisor      -> Llama 3.1 8B  (fast/cheap routing, called every cycle)
+  - Transactional   -> Mistral-Nemo 12B
+  - Investigative   -> Llama 3.1 70B
 
 We don't want each agent to know HOW to call its model. So we define ONE tiny
 interface — ``LLMClient.chat(system, user) -> str`` — and a few implementations
@@ -33,40 +34,16 @@ class LLMClient:
         raise NotImplementedError
 
 
-class OllamaClient(LLMClient):
-    """Talks to a local Ollama server on the edge box (the Supervisor model)."""
-
-    def __init__(self, model: str):
-        self.model = model
-        self.base_url = settings.OLLAMA_BASE_URL.rstrip("/")
-
-    def chat(self, system: str, user: str) -> str:
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "stream": False,
-            # Low temperature -> deterministic routing/extraction, fewer surprises.
-            "options": {"temperature": 0.1},
-        }
-        resp = requests.post(f"{self.base_url}/api/chat", json=payload, timeout=60)
-        resp.raise_for_status()
-        return resp.json()["message"]["content"]
-
-
 class CloudOpenAIClient(LLMClient):
     """
-    Talks to any OpenAI-compatible cloud endpoint (NVIDIA NIM, Azure, etc.) for
-    the heavy Transactional and Investigative models. The API key comes from the
-    environment and is never logged.
+    Talks to any OpenAI-compatible cloud endpoint (NVIDIA NIM by default) for
+    every agent role. The API key comes from the environment and is never logged.
     """
 
     def __init__(self, model: str):
         self.model = model
         self.base_url = settings.CLOUD_LLM_BASE_URL.rstrip("/")
-        self.api_key = settings.CLOUD_LLM_API_KEY
+        self.api_key = settings.NVIDIA_API_KEY
 
     def chat(self, system: str, user: str) -> str:
         headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -87,52 +64,39 @@ class CloudOpenAIClient(LLMClient):
 
 class MockClient(LLMClient):
     """
-    A deterministic fake model. Used in CI and when USE_MOCK_LLM=true so the
-    whole system runs with zero external dependencies. It returns canned, valid
-    JSON so the agents' parsing logic can be tested reliably.
+    Stub used when USE_MOCK_LLM=true. Lets the backend run end-to-end with no
+    NVIDIA key — useful for local dev, tests and demos without connectivity.
+    Returns minimal valid JSON that each agent's parser accepts.
     """
 
     def __init__(self, role: str):
         self.role = role
 
     def chat(self, system: str, user: str) -> str:
-        text = user.lower()
         m = re.search(r"PO-[A-Za-z0-9\-]+", user)
         po = m.group(0) if m else "PO-A350-88123"
+        text = user.lower()
         if self.role == "supervisor":
-            # Heuristic routing for the stub model (demo without a real LLM).
-            # We use word BOUNDARIES (\b) so a keyword doesn't match inside
-            # another word. We test reporting words first (delay/shipping) ->
-            # transactional, THEN delivery-time questions -> responder.
-            report_re = r"\b(delay\w*|retard\w*|shipped|exp[ée]di\w*|fnc|schedul\w*|planning)\b"
-            enquiry_re = (r"\b(when will|when can|delivery time|lead time|eta|"
-                          r"estimated delivery|how long|d[ée]lai\w*|livr\w*)\b")
-            if re.search(report_re, text):
-                return "transactional"
-            if re.search(enquiry_re, text):
+            # Cheap keyword routing that mirrors the real router's intent
+            # taxonomy, so every mission is reachable in mock mode.
+            if any(k in text for k in ("historique complet", "complete history", "full history", "audit du num")):
+                return "traceability"
+            if any(k in text for k in ("when will", "delivery time", "quand sera", "confirm the delivery", "eta?")):
                 return "responder"
-            return "investigative"
+            if any(k in text for k in ("where is", "find the", "document", "certificate", "record")):
+                return "investigative"
+            return "transactional"
         if self.role == "transactional":
-            return (
-                '{"po_number": "' + po + '", "new_status": "DELAYED", '
-                '"delay_days": 8, "confidence": "high"}'
-            )
+            if any(k in text for k in ("fnc", "non-conform", "non conform", "défaut", "defect", "rayure")):
+                return f'{{"request_type": "CREATE_FNC", "po_number": "{po}", "defect_type": "Rayure sur carter", "confidence": "high"}}'
+            return f'{{"request_type": "DELAY_REPORT", "po_number": "{po}", "new_status": "DELAYED", "delay_days": 8, "confidence": "high"}}'
         if self.role == "responder":
-            # The mock responder is called twice: once to extract, once to draft.
             if "purchase order or equipment reference" in system.lower():
-                return '{"po_number": "' + po + '", "part_hint": "actuator"}'
-            return (
-                '{"subject": "Your delivery update — good news!", '
-                '"body": "Dear valued partner,\\n\\nThank you for reaching out. '
-                'We are delighted to confirm your order is on track for delivery '
-                'on the forecast date shown in our system. We truly appreciate '
-                'your partnership and remain at your full disposal.\\n\\n'
-                'Warm regards,\\nActuAI Customer Service"}'
-            )
-        return (
-            '{"answer": "Retrieved the latest matching document version.", '
-            '"sources": ["DF-A350-007-v3.pdf"]}'
-        )
+                return f'{{"po_number": "{po}", "part_hint": "actuator"}}'
+            return '{"subject": "Delivery update", "body": "Dear partner,\\n\\nYour order is on track.\\n\\nRegards,\\nActuAI Customer Service"}'
+        if "traceability auditor" in system.lower():
+            return '{"narrative": "Component ordered, received, and integrated with no anomalies."}'
+        return '{"answer": "Document retrieved.", "sources": ["DF-A350-007-v3.pdf"]}'
 
 
 # Cache clients so we don't rebuild them on every call.
@@ -152,7 +116,7 @@ def get_client(role: str) -> LLMClient:
     if settings.USE_MOCK_LLM:
         client: LLMClient = MockClient(role)
     elif role == "supervisor":
-        client = OllamaClient(settings.SUPERVISOR_MODEL)
+        client = CloudOpenAIClient(settings.SUPERVISOR_MODEL)
     elif role == "transactional":
         client = CloudOpenAIClient(settings.TRANSACTIONAL_MODEL)
     elif role == "investigative":

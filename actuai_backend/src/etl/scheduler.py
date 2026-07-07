@@ -17,6 +17,7 @@ from sqlmodel import Session
 
 from config import settings
 from database.connection import engine
+from etl.aog_scanner import scan_schedule_discrepancies
 from etl.sap_connector import SAPConnector
 
 log = logging.getLogger("actuai.etl")
@@ -33,6 +34,10 @@ def poll_loop(stop_event: threading.Event) -> None:
         try:
             with Session(engine) as session:
                 result = connector.full_sync(session)
+                # Mission 2 proactive sweep, right after the mirror refresh so
+                # it always sees the freshest SAP dates.
+                if settings.AOG_SCAN_ENABLED:
+                    result["aog_alerts"] = scan_schedule_discrepancies(session)
                 session.commit()
                 log.info("ETL sync ok: %s", result)
         except Exception as exc:  # noqa: BLE001 — the loop must survive anything

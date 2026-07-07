@@ -8,7 +8,7 @@ from actuai_mock_data.config import settings
 fake = Faker('fr_FR')
 
 def generate_weekly_dashboard(num_rows: int = 20):
-    print("📊 Génération du tableau de bord Excel partagé...")
+    print("Génération du tableau de bord Excel partagé...")
     
     # Création du dossier cible s'il n'existe pas
     output_dir = Path(settings.mock_excel_dir)
@@ -32,7 +32,7 @@ def generate_weekly_dashboard(num_rows: int = 20):
     
     # Écriture du fichier Excel
     df.to_excel(file_path, index=False, engine='openpyxl')
-    print(f"✅ Fichier Excel généré : {file_path}")
+    print(f"Fichier Excel généré : {file_path}")
 
 if __name__ == "__main__":
     generate_weekly_dashboard()

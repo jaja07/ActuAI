@@ -3,15 +3,14 @@
 # Build context is the BACKEND folder:
 #     docker build -t actuai-backend ./actuai_backend
 #
-# We use uv (fast, reproducible) to install the dependencies declared in
-# pyproject.toml, then run uvicorn from the src/ directory (the import root).
+# We use plain pip (no uv) to install the dependencies declared in
+# requirements.txt, then run uvicorn from the src/ directory (the import root) —
+# same approach as actuai_mock_data's Dockerfile, to keep the image lightweight
+# and not depend on the workspace's uv tooling at runtime.
 
 FROM python:3.13-slim
 
-# uv: a fast drop-in replacement for pip/venv (copied from the official image).
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# psycopg2-binary ships wheels, but keep build-essential for any source builds.
+# psycopg[binary] ships wheels, but keep build-essential for any source builds.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential curl \
     && rm -rf /var/lib/apt/lists/*
@@ -19,8 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 1) Install dependencies first (better layer caching).
-COPY pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
+COPY requirements.txt ./
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # 2) Copy the source.
 COPY src ./src
@@ -34,4 +34,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
     CMD curl -fsS http://localhost:8000/healthz || exit 1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

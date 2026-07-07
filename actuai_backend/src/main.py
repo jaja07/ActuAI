@@ -8,8 +8,10 @@ Run it from the ``src`` directory (so the package imports resolve):
 """
 
 import logging
+import threading
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +19,7 @@ from prometheus_client import Counter, Histogram, make_asgi_app
 from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from api.routers import auth, health, hitl, triggers
+from api.routers import auth, documents, health, hitl, quality, triggers, users
 from config import settings
 from database.connection import engine, init_db
 from etl.sap_connector import SAPConnector
@@ -36,24 +38,18 @@ REQUESTS = Counter("actuai_requests_total", "HTTP requests", ["method", "path", 
 LATENCY = Histogram("actuai_request_seconds", "Request latency", ["method", "path"])
 
 
-app = FastAPI(
-    title="ActuAI Backend",
-    version="1.0.0",
-    description="API de l'orchestrateur LangGraph et Datalake",
-)
-
-
-@app.on_event("startup")
-def on_startup():
-    """Runs once when the application boots."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown lifecycle (replaces the deprecated on_event hooks)."""
     if settings.ENV == "prod" and settings.JWT_SECRET == "CHANGE_ME_IN_PROD":
         # Refuse to boot insecurely in production. Fail fast, fail loud.
         raise RuntimeError("JWT_SECRET must be set in production!")
 
-    print("🚀 Démarrage du backend ActuAI...")
     log.info("Starting ActuAI backend (env=%s)", settings.ENV)
     init_db()
-    seed_demo_users()
+
+    with Session(engine) as session:
+        seed_demo_users(session)
 
     app.state.etl_stop = None
     if settings.ETL_AUTO_START:
@@ -67,14 +63,31 @@ def on_startup():
         # Launch the recurring background ETL poller.
         app.state.etl_stop = start_background_etl()
 
+    if settings.INDEX_DOCS_ON_START:
+        # Index the technical PDFs without blocking boot (heavy ML imports).
+        def _index():
+            try:
+                from etl.document_indexer import index_technical_documents
+                index_technical_documents()
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Startup document indexing failed: %s", exc)
 
-@app.on_event("shutdown")
-def on_shutdown():
-    """Stop the background ETL poller cleanly, if it was started."""
+        threading.Thread(target=_index, name="doc-indexer", daemon=True).start()
+
+    yield
+
     stop_event = getattr(app.state, "etl_stop", None)
     if stop_event is not None:
         log.info("Shutting down — stopping ETL loop")
         stop_event.set()
+
+
+app = FastAPI(
+    title="ActuAI Backend",
+    version="1.0.0",
+    description="Multi-agent orchestrator and datalake API",
+    lifespan=lifespan,
+)
 
 
 # ---- Security headers + request id + metrics middleware -------------------
@@ -106,15 +119,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE", "PUT"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 # ---- Routers --------------------------------------------------------------
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(triggers.router)
 app.include_router(hitl.router)
+app.include_router(quality.router)
+app.include_router(documents.router)
 
 # ---- /metrics for Prometheus ----------------------------------------------
 app.mount("/metrics", make_asgi_app())

@@ -1,12 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ActuAI — Validation Dashboard</title>
+    <!-- Machine translation (Chrome/Edge auto-translate) mutates DOM text nodes
+         behind React's back and crashes the app on the next state update
+         (white page). This console is intentionally not translatable. -->
+    <meta name="google" content="notranslate" />
+    <title>ActuAI - Human-in-the-Loop Operations Dashboard</title>
+    <script>
+      // Apply the persisted theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem('actuai_theme');
+          var dark = stored ? stored === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) { /* no-op */ }
+      })();
+    </script>
   </head>
-  <body>
+  <body class="bg-surface text-on-surface h-screen overflow-hidden font-body-md text-body-md">
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

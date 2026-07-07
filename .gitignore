@@ -203,10 +203,6 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
-# Node / npm
-node_modules/
-package-lock.json
-
 # Ruff stuff:
 .ruff_cache/
 
@@ -221,7 +217,13 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Fichiers de configuration spécifiques au mock
-actuai_mock_data/Dockerfile
-actuai_mock_data/pyproject.toml
-actuai_mock_data/README.md
+# ActuAI - bases de données générées localement
+*.db
+*.db-journal
+
+# ActuAI - données factices générées par actuai_mock_data
+actuai_mock_data/output/
+
+# ActuAI - dépendances frontend
+actuai_frontend/node_modules/
+actuai_frontend/dist/

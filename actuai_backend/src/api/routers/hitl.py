@@ -19,7 +19,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from api.dependencies import Role, TokenUser, get_current_user, get_session, require_roles
-from database.models import SentEmail, TaskStatus, ValidationTask, utcnow
+from database.models import (
+    Delivery,
+    PurchaseOrder,
+    SentEmail,
+    TaskStatus,
+    ValidationTask,
+    utcnow,
+)
 from etl.sap_connector import SAPConnector
 from security import audit
 
@@ -69,6 +76,42 @@ def approve_task(
             body=task.payload.get("body", ""),
             sent_by=user.username,
         ))
+    elif task.kind == "AOG_ALERT":
+        # Mission 2: approving an AOG alert sends an escalation email to the
+        # supplier/transporter asking for expedited shipping — no SAP write.
+        supplier = task.payload.get("supplier_name", "supplier")
+        session.add(SentEmail(
+            to_address=f"logistics@{supplier.lower().replace(' ', '')}.com",
+            subject=f"URGENT — AOG risk on {task.payload.get('po_number', '')}",
+            body=(
+                f"Your delivery for {task.payload.get('part_reference', '')} is now forecast for "
+                f"{task.payload.get('supplier_eta', '')}, which is {task.payload.get('delay_vs_dropdead_days', '?')} "
+                f"day(s) past the {task.payload.get('drop_dead_date', '')} drop-dead date required by the "
+                f"{task.payload.get('aircraft_program', '')} assembly line. Please expedite shipping."
+            ),
+            sent_by=user.username,
+        ))
+    elif task.kind == "RAG_ANSWER":
+        # Mission 4: "approving" a RAG synthesis just records that a human
+        # reviewed and signed off on it (traceability for the AI's output,
+        # report 5.3) — no SAP write, no outbound email.
+        pass
+    elif task.kind == "TRACEABILITY_DOSSIER":
+        # Mission 5: "Archiver le dossier d'audit" — the engineer's sign-off
+        # IS the archival event (captured by the audit log below); no SAP
+        # write or email is involved in this use case.
+        pass
+    elif task.kind == "CREATE_FNC":
+        # Mission 3: approving a Quality Notification draft submits it to SAP.
+        ncr_number = task.payload.get("ncr_number")
+        po_number = task.payload.get("po_number")
+        defect_type = task.payload.get("defect_type")
+        if not (ncr_number and po_number and defect_type):
+            raise HTTPException(status_code=409, detail="Draft is missing FNC fields")
+        try:
+            SAPConnector().create_quality_notification(ncr_number, po_number, defect_type)
+        except (requests.exceptions.RequestException, RuntimeError) as exc:
+            raise HTTPException(status_code=502, detail=f"SAP write failed: {exc}")
     else:
         # SAP write-back via the mock API:
         # PUT /api/bapi/purchase-orders/{po}/update-date?new_date=YYYY-MM-DD
@@ -83,6 +126,33 @@ def approve_task(
             SAPConnector().push_delivery_date(po_number, new_date)
         except (requests.exceptions.RequestException, RuntimeError) as exc:
             raise HTTPException(status_code=502, detail=f"SAP write failed: {exc}")
+
+        # Mission 1: also record the delivery status in OUR datalake. The
+        # `deliveries` table is ActuAI-owned (never overwritten by the ETL
+        # mirror sync), so it is the durable record of what the supplier said.
+        new_status = task.payload.get("new_status") or "DELAYED"
+        delay_days = int(task.payload.get("delay_days") or 0)
+        delivery = session.exec(
+            select(Delivery).where(Delivery.po_number == po_number)
+        ).first()
+        if delivery is None:
+            delivery = Delivery(po_number=po_number)
+            session.add(delivery)
+        delivery.status = new_status
+        delivery.delay_days = delay_days
+        delivery.actual_delivery_date = (
+            date.fromisoformat(new_date) if new_status == "RECEIVED" else None
+        )
+        delivery.updated_at = utcnow()
+
+        # Keep the mirrored PO consistent until the next ETL tick re-syncs SAP
+        # (which now holds the same date anyway, since the PUT above succeeded).
+        po = session.exec(
+            select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)
+        ).first()
+        if po is not None:
+            po.expected_delivery_date = date.fromisoformat(new_date)
+            po.status = new_status
 
     task.status = TaskStatus.EXECUTED
     task.decided_at = utcnow()

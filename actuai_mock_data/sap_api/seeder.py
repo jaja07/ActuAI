@@ -17,10 +17,10 @@ fake = Faker('fr_FR')
 
 # Listes de références métier
 SUPPLIERS = ["Safran", "Thales", "Liebherr", "Moog", "Parker Aerospace"]
-DEFECTS = ["Rayure sur carter", "Absence certificat matière", "Erreur dimensionnelle", "Oxydation connecteur"]
+DEFECTS = ["Scratch on housing", "Missing material certificate", "Dimensional error", "Oxidation on connector"]
 
 def seed_database():
-    print("🔄 Initialisation de la base de données SAP factice...")
+    print("Initialisation de la base de données SAP factice...")
     engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
     
     # Réinitialisation (Drop & Create)
@@ -77,18 +77,22 @@ def seed_database():
                 )
                 session.add(receipt)
                 
-                # 20% de chances d'avoir un défaut à la réception (Mission 3)
+                # 20% de chances d'avoir un défaut à la réception (Mission 3).
+                # Le statut suit le cycle 8D condensé du backend :
+                # PENDING -> D3_CONTAINMENT -> D5_CORRECTIVE_ACTION -> D8_CLOSED
                 if random.random() < 0.2:
                     fnc = QualityNotification(
                         ncr_number=f"FNC-26-{fake.unique.random_int(100, 999)}",
                         po_number=po.po_number,
                         defect_type=random.choice(DEFECTS),
-                        report_8d_status=random.choice(["PENDING", "CLOSED"])
+                        report_8d_status=random.choice(
+                            ["PENDING", "D3_CONTAINMENT", "D5_CORRECTIVE_ACTION", "D8_CLOSED"]
+                        )
                     )
                     session.add(fnc)
 
         session.commit()
-        print("✅ Base de données simulée avec succès !")
+        print("Base de données simulée avec succès !")
         print(f"   - {len(schedules)} pièces planifiées sur la ligne d'assemblage A350.")
         print(f"   - {len(purchase_orders)} commandes fournisseurs générées.")
 
