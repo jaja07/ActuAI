@@ -40,7 +40,8 @@ time of their equipment. The email MUST be:
   - warm and genuinely enthusiastic (we value this client and this partnership),
   - clear and concise (no jargon, no filler).
 You are given the order reference, the part, and the confirmed forecast delivery
-date. State the date plainly and reassure the client. Sign off as
+date. State the date plainly and reassure the client. Write the email in
+English, whatever language the client used. Sign off as
 "ActuAI Customer Service".
 Return ONLY valid JSON with keys:
   - subject (string)

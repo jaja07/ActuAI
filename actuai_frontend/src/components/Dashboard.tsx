@@ -87,8 +87,8 @@ export default function Dashboard() {
   // "Simulate trigger" modal: posts a real email to the backend ingestion
   // endpoint, which runs one full Supervisor -> worker -> HITL cycle.
   const [showInspectionModal, setShowInspectionModal] = useState(false);
-  const [newSender, setNewSender] = useState('logistique@safran.com');
-  const [newSubject, setNewSubject] = useState('Retard de livraison');
+  const [newSender, setNewSender] = useState('logistics@safran.com');
+  const [newSubject, setNewSubject] = useState('Delivery delay');
   const [newBody, setNewBody] = useState('');
   const [submittingTrigger, setSubmittingTrigger] = useState(false);
 
@@ -234,7 +234,7 @@ export default function Dashboard() {
                 <input
                   type="text"
                   className="w-full border border-outline rounded p-2 text-xs bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  placeholder="logistique@safran.com"
+                  placeholder="logistics@safran.com"
                   value={newSender}
                   onChange={(e) => setNewSender(e.target.value)}
                   required
@@ -248,7 +248,7 @@ export default function Dashboard() {
                 <input
                   type="text"
                   className="w-full border border-outline rounded p-2 text-xs bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  placeholder="Retard de livraison"
+                  placeholder="Delivery delay"
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value)}
                   required
@@ -261,7 +261,7 @@ export default function Dashboard() {
                 </label>
                 <textarea
                   className="w-full border border-outline rounded p-2 text-xs h-28 bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                  placeholder="Suite à un problème de matière première, la livraison de la commande PO-456123 prévue le 10 mai est repoussée au 15 mai."
+                  placeholder="Due to a raw-material issue, delivery of purchase order PO-456123 planned for May 10 is postponed to May 15."
                   value={newBody}
                   onChange={(e) => setNewBody(e.target.value)}
                   required

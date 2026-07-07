@@ -17,7 +17,7 @@ fake = Faker('fr_FR')
 
 # Listes de références métier
 SUPPLIERS = ["Safran", "Thales", "Liebherr", "Moog", "Parker Aerospace"]
-DEFECTS = ["Rayure sur carter", "Absence certificat matière", "Erreur dimensionnelle", "Oxydation connecteur"]
+DEFECTS = ["Scratch on housing", "Missing material certificate", "Dimensional error", "Oxidation on connector"]
 
 def seed_database():
     print("Initialisation de la base de données SAP factice...")

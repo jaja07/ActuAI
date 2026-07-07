@@ -58,7 +58,7 @@ def get_all_purchase_orders(session: Session = Depends(get_session)):
 def get_purchase_order(po_number: str, session: Session = Depends(get_session)):
     order = session.exec(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Purchase order not found")
     return order
 
 @app.get("/api/bapi/goods-receipts/", response_model=List[GoodsReceipt])
@@ -82,7 +82,7 @@ def update_delivery_date(po_number: str, new_date: date, session: Session = Depe
     """Permet à l'Agent de repousser une date de livraison (Mission 1 & 2)."""
     order = session.exec(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Commande introuvable")
+        raise HTTPException(status_code=404, detail="Purchase order not found")
 
     order.expected_delivery_date = new_date
     session.add(order)
@@ -105,13 +105,13 @@ def update_8d_status(ncr_number: str, new_status: str, session: Session = Depend
     if new_status not in EIGHT_D_SEQUENCE:
         raise HTTPException(
             status_code=422,
-            detail=f"Statut 8D invalide. Attendu : {EIGHT_D_SEQUENCE}",
+            detail=f"Invalid 8D status. Expected one of: {EIGHT_D_SEQUENCE}",
         )
     notification = session.exec(
         select(QualityNotification).where(QualityNotification.ncr_number == ncr_number)
     ).first()
     if not notification:
-        raise HTTPException(status_code=404, detail="FNC introuvable")
+        raise HTTPException(status_code=404, detail="FNC not found")
 
     notification.report_8d_status = new_status
     session.add(notification)
@@ -130,13 +130,13 @@ async def periodic_email_sender():
     (par défaut 90-240 s : assez vivant pour la démo sans saturer les quotas
     LLM du backend, qui traite chaque email avec de vrais appels NIM).
     """
-    print("Simulateur d'emails en arrière-plan activé "
-          f"(toutes les {settings.email_send_min_seconds}-{settings.email_send_max_seconds}s)...")
+    print("Background email simulator active "
+          f"(every {settings.email_send_min_seconds}-{settings.email_send_max_seconds}s)...")
     while True:
         delay = random.randint(settings.email_send_min_seconds, settings.email_send_max_seconds)
         await asyncio.sleep(delay)
 
-        print(f"\n[Auto-Simulation] Génération d'un email spontané après {delay}s...")
+        print(f"\n[Auto-Simulation] Generating a spontaneous email after {delay}s...")
         await asyncio.to_thread(generate_supplier_emails, num_emails=1) # On utilise to_thread pour ne pas bloquer le serveur FastAPI
 
 
@@ -147,6 +147,6 @@ async def periodic_email_sender():
 @app.post("/api/simulate/trigger-email")
 async def trigger_manual_email():
     """Route de secours pour la présentation : force l'envoi d'un email IMMÉDIATEMENT."""
-    print("\n[Démo] Déclenchement manuel d'un email fournisseur...")
+    print("\n[Demo] Manual supplier email trigger...")
     await asyncio.to_thread(generate_supplier_emails, num_emails=1)
-    return {"status": "success", "message": "Email envoyé au backend LangGraph !"}
+    return {"status": "success", "message": "Email sent to the ActuAI backend!"}

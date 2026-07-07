@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="ActuAI Backend",
     version="1.0.0",
-    description="API de l'orchestrateur multi-agents et du Datalake",
+    description="Multi-agent orchestrator and datalake API",
     lifespan=lifespan,
 )
 

@@ -4,7 +4,7 @@ generators/emails.py — Simulated supplier email flow.
 Each call to generate_supplier_emails():
   1. Picks a random PurchaseOrder that actually exists in the SAP mock DB.
   2. Picks a random scenario (delay, shipment, quality issue).
-  3. Calls Gemini (gemini-2.5-flash, free tier) to write a realistic French
+  3. Calls Gemini (gemini-2.5-flash, free tier) to write a realistic English
      email body that explicitly references the real PO number.
   4. POSTs the email as a JSON webhook to the ActuAI backend ingestion route.
 
@@ -31,36 +31,36 @@ _gemini = genai.Client(api_key=settings.google_api_key)
 # Three scenarios the Transactional agent knows how to handle.
 _SCENARIOS = [
     {
-        "subject_tpl": "Alerte retard livraison — {po}",
+        "subject_tpl": "Delivery delay alert — {po}",
         "type": "DELAY",
         "instruction": (
-            "Informe le client d'un retard de {delay} jours sur la commande {po}. "
-            "Donne la nouvelle date estimée ({new_date}). Sois direct et factuel."
+            "Inform the client of a {delay}-day delay on purchase order {po}. "
+            "Give the new estimated date ({new_date}). Be direct and factual."
         ),
     },
     {
-        "subject_tpl": "Confirmation d'expédition — {po}",
+        "subject_tpl": "Shipping confirmation — {po}",
         "type": "SHIPPED",
         "instruction": (
-            "Confirme l'expédition de la commande {po} aujourd'hui. "
-            "Indique que la livraison est prévue à la date contractuelle."
+            "Confirm that purchase order {po} shipped today. "
+            "State that delivery is expected on the contractual date."
         ),
     },
     {
-        "subject_tpl": "Problème qualité détecté en usine — {po}",
+        "subject_tpl": "Quality issue detected in the factory — {po}",
         "type": "FNC",
         "instruction": (
-            "Signale un défaut qualité ({defect}) sur la pièce {part} de la commande {po}. "
-            "Demande l'ouverture d'une fiche de non-conformité (FNC)."
+            "Report a quality defect ({defect}) on part {part} of purchase order {po}. "
+            "Request the creation of a non-conformance report (FNC)."
         ),
     },
 ]
 
 _DEFECTS = [
-    "rayure sur carter",
-    "absence de certificat matière",
-    "erreur dimensionnelle hors tolérance",
-    "oxydation sur connecteur",
+    "scratch on the housing",
+    "missing material certificate",
+    "dimensional error out of tolerance",
+    "oxidation on the connector",
 ]
 
 
@@ -80,7 +80,7 @@ def _build_prompt(po: PurchaseOrder, scenario: dict, delay: int) -> str:
     new_date = (
         (po.expected_delivery_date + timedelta(days=delay)).isoformat()
         if po.expected_delivery_date
-        else "date inconnue"
+        else "unknown date"
     )
     instruction = scenario["instruction"].format(
         po=po.po_number,
@@ -90,14 +90,14 @@ def _build_prompt(po: PurchaseOrder, scenario: dict, delay: int) -> str:
         defect=random.choice(_DEFECTS),
     )
     return (
-        f"Tu es un fournisseur aérospatial ({po.supplier_name}) qui écrit un email "
-        f"professionnel et concis en français à son client.\n\n"
-        f"Contexte : {instruction}\n\n"
-        f"Règles :\n"
-        f"- Mentionne explicitement le numéro de commande {po.po_number}\n"
-        f"- 3 à 5 phrases maximum\n"
-        f"- Pas de signature, pas d'objet — uniquement le corps du message\n"
-        f"- Ton professionnel mais direct"
+        f"You are an aerospace supplier ({po.supplier_name}) writing a concise, "
+        f"professional email in English to your client.\n\n"
+        f"Context: {instruction}\n\n"
+        f"Rules:\n"
+        f"- Explicitly mention purchase order number {po.po_number}\n"
+        f"- 3 to 5 sentences maximum\n"
+        f"- No signature, no subject line — only the message body\n"
+        f"- Professional but direct tone"
     )
 
 
@@ -109,22 +109,22 @@ def _call_gemini(prompt: str, po_number: str) -> str:
         )
         return response.text.strip()
     except Exception as exc:
-        print(f"  [Gemini] Erreur : {exc} — utilisation du fallback.")
+        print(f"  [Gemini] Error: {exc} — using the fallback template.")
         return (
-            f"Madame, Monsieur,\n\n"
-            f"Nous vous informons d'une mise à jour concernant la commande {po_number}. "
-            f"Merci de bien vouloir prendre en compte cette information dans votre planning.\n\n"
-            f"Cordialement,\nService Logistique"
+            f"Dear Sir or Madam,\n\n"
+            f"Please be informed of an update concerning purchase order {po_number}. "
+            f"Kindly take this information into account in your planning.\n\n"
+            f"Best regards,\nLogistics Department"
         )
 
 
 def generate_supplier_emails(num_emails: int = 1) -> None:
-    print("Simulation du flux d'emails fournisseurs MS Exchange...")
+    print("Simulating the MS Exchange supplier email flow...")
 
     for _ in range(num_emails):
         po = _fetch_random_po()
         if po is None:
-            print("  [X] Aucune commande en base — le seeder a-t-il été lancé ?")
+            print("  [X] No purchase orders in the database — has the seeder been run?")
             continue
 
         scenario = random.choice(_SCENARIOS)
@@ -136,7 +136,7 @@ def generate_supplier_emails(num_emails: int = 1) -> None:
         subject = scenario["subject_tpl"].format(po=po.po_number)
         email_payload = {
             "message_id": fake.uuid4(),
-            "sender": f"logistique@{po.supplier_name.lower().replace(' ', '')}.com",
+            "sender": f"logistics@{po.supplier_name.lower().replace(' ', '')}.com",
             "subject": subject,
             "date": fake.iso8601(),
             "body": body,
@@ -154,13 +154,13 @@ def generate_supplier_emails(num_emails: int = 1) -> None:
                 timeout=30,
             )
             if response.ok:
-                print(f"  [OK] Email envoyé : {subject} (HTTP {response.status_code})")
+                print(f"  [OK] Email sent: {subject} (HTTP {response.status_code})")
             else:
-                print(f"  [X] Backend a refusé l'email (HTTP {response.status_code}) : "
+                print(f"  [X] Backend rejected the email (HTTP {response.status_code}) : "
                       f"{response.text[:200]}")
         except requests.exceptions.RequestException as exc:
-            print(f"  [X] Backend injoignable ({exc.__class__.__name__}) — "
-                  f"email généré localement : {subject}")
+            print(f"  [X] Backend unreachable ({exc.__class__.__name__}) — "
+                  f"email generated locally: {subject}")
             print(f"      Body : {body[:120]}...")
 
 

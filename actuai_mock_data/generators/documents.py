@@ -4,12 +4,12 @@ from pathlib import Path
 import random
 from actuai_mock_data.config import settings
 
-fake = Faker('fr_FR')
+fake = Faker('en_US')
 
 class PDF(FPDF):
     def header(self):
         self.set_font("helvetica", "B", 12)
-        self.cell(0, 10, "DOCUMENTATION TECHNIQUE - AEROSPACE", border=False, align="C", new_x="LMARGIN", new_y="NEXT") # type: ignore
+        self.cell(0, 10, "AEROSPACE TECHNICAL DOCUMENTATION", border=False, align="C", new_x="LMARGIN", new_y="NEXT") # type: ignore
         self.ln(5)
 
 def generate_technical_documents(num_docs: int = 5):
@@ -34,15 +34,15 @@ def generate_technical_documents(num_docs: int = 5):
         pdf.set_font("helvetica", size=11)
 
         # Corps du document
-        pdf.cell(0, 10, f"Type de Document : {doc_type.replace('_', ' ')}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(0, 10, f"Référence Pièce : {part_ref}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(0, 10, f"Numéro de Commande : {po_number}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(0, 10, f"Révision : {revision}", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(0, 10, f"Date de génération : {fake.date()}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 10, f"Document Type: {doc_type.replace('_', ' ')}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 10, f"Part Reference: {part_ref}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 10, f"Purchase Order Number: {po_number}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 10, f"Revision: {revision}", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(0, 10, f"Generated on: {fake.date()}", new_x="LMARGIN", new_y="NEXT")
         pdf.ln(10)
 
         # Génération d'un texte factice simulant un rapport technique
-        pdf.multi_cell(0, 7, f"Description technique :\n{fake.paragraph(nb_sentences=5)}")
+        pdf.multi_cell(0, 7, f"Technical description:\n{fake.paragraph(nb_sentences=5)}")
 
         file_name = f"{doc_type}_{po_number}_rev{revision}.pdf"
         pdf.output(output_dir / file_name)

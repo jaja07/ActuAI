@@ -59,7 +59,7 @@ Each mission maps to a concrete NVA task the service performs today by hand. All
 
 | | |
 |---|---|
-| **Trigger** | A supplier email arrives via the webhook (`POST /api/ingest/email`) — e.g. *"la livraison de la commande PO-412958 est repoussée de 8 jours"*, a shipping confirmation, or a client asking for an ETA. |
+| **Trigger** | A supplier email arrives via the webhook (`POST /api/ingest/email`) — e.g. *"delivery of purchase order PO-412958 is postponed by 8 days"*, a shipping confirmation, or a client asking for an ETA. |
 | **Agents** | Supervisor → **Transactional** (supplier facts → SAP update draft) or **Responder** (client ETA enquiry → reply-email draft). |
 | **What the agent does** | Extracts structured facts with the LLM (`request_type`, `po_number`, `new_status`, `delay_days`), confirms the PO exists in the datalake (SQL tool), computes the new expected date, and drafts either a `SAP_UPDATE` payload or an `EMAIL_REPLY`. |
 | **On human approval** | The backend PUTs the new date to SAP (`/api/bapi/purchase-orders/{po}/update-date`), **upserts the ActuAI-owned `deliveries` record** (status, delay, timestamp — the durable trace that survives ETL re-syncs), refreshes the mirrored PO, or records the reply in the `sent_emails` outbox. |
@@ -93,7 +93,7 @@ the decision.
 
 *"Pre-fill the NCR; track the corrective action to closure."*
 
-- **Pre-fill** — a short request ("Créer FNC pour rayure sur carter de la commande
+- **Pre-fill** — a short request ("Create an FNC for a scratch on the housing of purchase order
   PO-456123") routes to the Transactional agent, which pulls the part reference, supplier
   and PO metadata already on file, generates an NCR number (`FNC-YY-XXXXXX`) and drafts a
   complete Quality Notification. The controller only reviews and submits; approval POSTs it
@@ -152,7 +152,7 @@ co-pilot that can also run fresh live queries).
 
 *"One serial number in, the component's complete life story out."*
 
-A request like *"Fais-moi l'historique complet et l'audit du numéro de série SN-2460"*
+A request like *"Give me the complete history and audit of serial number SN-2460"*
 triggers a **hybrid** run:
 
 1. The serial is extracted (regex `SN-...`), then the **structured trail** is reconstructed
@@ -332,7 +332,7 @@ keyword-routes and returns canned-but-valid JSON — the whole stack, including 
 missions, runs offline with zero API keys. This is what the test suite uses.
 
 The mock **email generator** uses a separate provider (Google Gemini `gemini-2.5-flash` via
-`GOOGLE_API_KEY`) to write realistic French supplier emails, with a static-template fallback
+`GOOGLE_API_KEY`) to write realistic English supplier emails, with a static-template fallback
 when the key is absent — so the simulation and the system-under-test never share an LLM.
 
 ---
@@ -371,7 +371,7 @@ demonstrated end-to-end without touching production systems:
   asyncio task fires every **90–240 s** (configurable via `EMAIL_SEND_MIN/MAX_SECONDS`,
   disabled with `EMAIL_SEND_ENABLED=false`). Each firing: pick a *real* PO from the mock DB
   (so the agent's SQL lookup succeeds), pick a scenario (**DELAY / SHIPPED / FNC**), have
-  Gemini write a realistic French supplier email referencing that PO, and POST it to the
+  Gemini write a realistic English supplier email referencing that PO, and POST it to the
   backend's `/api/ingest/email` with the `X-Webhook-Token` header. A manual demo button
   exists too: `POST /api/simulate/trigger-email`.
 - **Document generator** (`generators/documents.py`) — revision-tagged technical PDFs

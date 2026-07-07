@@ -66,9 +66,9 @@ def create_aog_task(
         agent="transactional" if detected_by == "delay_email" else "etl_scanner",
         kind="AOG_ALERT",
         summary=(
-            f"Risque AOG : {po.part_reference} (PO {po.po_number}) attendu le "
-            f"{new_expected_date.isoformat()}, mais requis en chaîne le "
-            f"{schedule.assembly_line_date.isoformat()} ({delay_vs_dropdead} j de retard)."
+            f"AOG risk: {po.part_reference} (PO {po.po_number}) expected on "
+            f"{new_expected_date.isoformat()}, but required on the assembly line by "
+            f"{schedule.assembly_line_date.isoformat()} ({delay_vs_dropdead} day(s) late)."
         ),
         payload={
             "po_number": po.po_number,

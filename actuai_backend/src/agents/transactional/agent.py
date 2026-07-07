@@ -96,12 +96,12 @@ def _draft_quality_notification(state: GlobalState, po: PurchaseOrder, extracted
     (hitl.py POSTs it to SAP's quality-notifications endpoint).
     """
     state.mission = "M3"
-    defect_type = extracted.get("defect_type") or "Défaut non précisé"
+    defect_type = extracted.get("defect_type") or "Unspecified defect"
     ncr_number = f"FNC-{date.today().year % 100}-{uuid.uuid4().hex[:6].upper()}"
 
     state.draft_summary = (
-        f"FNC {ncr_number} : {defect_type} sur {po.part_reference} (PO {po.po_number}, "
-        f"fournisseur {po.supplier_name})."
+        f"FNC {ncr_number}: {defect_type} on {po.part_reference} (PO {po.po_number}, "
+        f"supplier {po.supplier_name})."
     )
     state.draft_payload = {
         "kind": "CREATE_FNC",
@@ -157,10 +157,10 @@ def run_transactional(state: GlobalState, session: Session) -> GlobalState:
         new_expected_date = (po.expected_delivery_date + timedelta(days=delay)).isoformat()
 
     state.draft_summary = (
-        f"Mise à jour fournisseur sur {po.part_reference} (PO {po.po_number}) : "
-        f"statut -> {status}"
-        + (f", +{delay} jour(s) de retard" if delay else "")
-        + (f", nouvelle date prévue {new_expected_date}" if new_expected_date else "")
+        f"Supplier update on {po.part_reference} (PO {po.po_number}): "
+        f"status -> {status}"
+        + (f", +{delay} day(s) of delay" if delay else "")
+        + (f", new expected date {new_expected_date}" if new_expected_date else "")
     )
     # This payload is exactly what will be sent to the SAP API on approval
     # (hitl.py does the PUT .../update-date with new_expected_date).

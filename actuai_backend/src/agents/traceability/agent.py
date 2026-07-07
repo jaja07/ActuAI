@@ -32,7 +32,8 @@ _SERIAL_RE = re.compile(r"\bSN-[A-Za-z0-9-]+\b", re.IGNORECASE)
 _SYSTEM = """You are an aerospace traceability auditor. Given the structured
 facts and the retrieved document excerpts below, write a short, factual
 chronological narrative of the component's history (order -> receipt ->
-integration, any defects). Return ONLY valid JSON:
+integration, any defects). Write the narrative in English, whatever language
+the excerpts use. Return ONLY valid JSON:
   - narrative (string)
 No prose outside the JSON, no markdown fences."""
 
@@ -91,7 +92,7 @@ def run_traceability(state: GlobalState, session: Session) -> GlobalState:
     result = _safe_json(client.chat(_SYSTEM, facts))
     narrative = result.get("narrative", "")
 
-    state.draft_summary = f"Dossier de traçabilité {serial_number} compilé ({len(chunks)} document(s), {len(notifications)} FNC)."
+    state.draft_summary = f"Traceability dossier for {serial_number} compiled ({len(chunks)} document(s), {len(notifications)} FNC)."
     state.draft_payload = {
         "kind": "TRACEABILITY_DOSSIER",
         "serial_number": serial_number,
