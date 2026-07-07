@@ -1,5 +1,8 @@
 # ✈️ ActuAI: Aerospace Production Workflow Automation
 
+> 📚 **Full project documentation** — architecture, the five missions in depth, security
+> model, deployment and verification: **[docs/PROJECT.md](docs/PROJECT.md)**
+
 ## 📖 Project Overview
 ActuAI is a secure, multi-agent artificial intelligence system designed to automate Non-Value Added (NVA) administrative tasks within a highly regulated aerospace Actuation service. Operating under strict EN9100 compliance constraints, the application bridges the gap between unstructured communication (e.g., supplier emails) and rigid enterprise resource planning (ERP) systems (such as SAP).
 
