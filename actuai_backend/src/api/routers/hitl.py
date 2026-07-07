@@ -19,7 +19,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from api.dependencies import Role, TokenUser, get_current_user, get_session, require_roles
-from database.models import SentEmail, TaskStatus, ValidationTask, utcnow
+from database.models import (
+    Delivery,
+    PurchaseOrder,
+    SentEmail,
+    TaskStatus,
+    ValidationTask,
+    utcnow,
+)
 from etl.sap_connector import SAPConnector
 from security import audit
 
@@ -119,6 +126,33 @@ def approve_task(
             SAPConnector().push_delivery_date(po_number, new_date)
         except (requests.exceptions.RequestException, RuntimeError) as exc:
             raise HTTPException(status_code=502, detail=f"SAP write failed: {exc}")
+
+        # Mission 1: also record the delivery status in OUR datalake. The
+        # `deliveries` table is ActuAI-owned (never overwritten by the ETL
+        # mirror sync), so it is the durable record of what the supplier said.
+        new_status = task.payload.get("new_status") or "DELAYED"
+        delay_days = int(task.payload.get("delay_days") or 0)
+        delivery = session.exec(
+            select(Delivery).where(Delivery.po_number == po_number)
+        ).first()
+        if delivery is None:
+            delivery = Delivery(po_number=po_number)
+            session.add(delivery)
+        delivery.status = new_status
+        delivery.delay_days = delay_days
+        delivery.actual_delivery_date = (
+            date.fromisoformat(new_date) if new_status == "RECEIVED" else None
+        )
+        delivery.updated_at = utcnow()
+
+        # Keep the mirrored PO consistent until the next ETL tick re-syncs SAP
+        # (which now holds the same date anyway, since the PUT above succeeded).
+        po = session.exec(
+            select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)
+        ).first()
+        if po is not None:
+            po.expected_delivery_date = date.fromisoformat(new_date)
+            po.status = new_status
 
     task.status = TaskStatus.EXECUTED
     task.decided_at = utcnow()

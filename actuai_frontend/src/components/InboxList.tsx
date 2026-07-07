@@ -1,6 +1,7 @@
 import React from 'react';
-import { Clock, Filter, AlertTriangle } from 'lucide-react';
-import { InboxItem, ViewType } from '../types';
+import { Clock, Inbox } from 'lucide-react';
+import { InboxItem } from '../types';
+import StatusPill from './shared/StatusPill';
 
 interface InboxListProps {
   items: InboxItem[];
@@ -27,7 +28,7 @@ export default function InboxList({
   });
 
   return (
-    <div className="w-full md:w-1/3 min-w-[320px] max-w-[400px] border-r border-outline-variant bg-surface flex flex-col h-full flex-shrink-0">
+    <div className="w-full border-r border-outline-variant bg-surface flex flex-col h-full">
       {/* List Header */}
       <div className="p-4 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-10 flex justify-between items-center">
         <div className="flex items-center gap-2">
@@ -36,20 +37,19 @@ export default function InboxList({
             {filteredItems.length}
           </span>
         </div>
-        <button 
-          title="Filter configuration" 
-          className="text-on-surface-variant p-1.5 rounded hover:bg-surface-container transition-colors cursor-pointer"
-        >
-          <Filter className="w-4 h-4 text-on-surface" />
-        </button>
       </div>
 
       {/* Scrollable Tasks container */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3" id="master-list">
         {filteredItems.length === 0 ? (
           <div className="p-8 text-center text-on-surface-variant flex flex-col items-center justify-center gap-2">
+            <Inbox className="w-8 h-8 opacity-40" />
             <p className="font-semibold text-body-lg">No Items Found</p>
-            <p className="text-xs text-[#76777d]">Try refining your search query in the toolbar above.</p>
+            <p className="text-xs text-on-surface-variant/80">
+              {searchQuery
+                ? 'Try refining your search query in the toolbar above.'
+                : 'New tasks appear here automatically as supplier emails arrive.'}
+            </p>
           </div>
         ) : (
           filteredItems.map((item) => {
@@ -65,27 +65,23 @@ export default function InboxList({
                     onItemSelect(item);
                   }
                 }}
-                className={`text-left bg-surface-container-lowest rounded-DEFAULT p-4 cursor-pointer relative transition-all shadow-xs block ${
+                className={`text-left bg-surface-container-lowest rounded-lg p-4 cursor-pointer relative transition-all shadow-xs block ${
                   isActive
                     ? 'border-2 border-primary ring-2 ring-primary/10'
-                    : 'border border-outline-variant hover:bg-surface-container-lowest/70'
+                    : 'border border-outline-variant hover:border-outline'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2 gap-2">
                   <span className={`text-label-md font-label-md font-bold uppercase tracking-wider ${isActive ? 'text-primary' : 'text-on-surface-variant'}`}>
                     {item.code}
                   </span>
-                  
-                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-label-md font-bold uppercase tracking-wider ${item.statusBg} ${item.statusColor}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${item.statusDot} ${item.viewId === 'aog' ? 'animate-pulse' : ''}`} />
-                    {item.status}
-                  </span>
+                  <StatusPill tone={item.statusTone} label={item.status} pulse={item.viewId === 'aog'} />
                 </div>
 
                 <h3 className="text-body-lg font-body-lg text-on-surface font-semibold mb-1">
                   {item.title}
                 </h3>
-                
+
                 <p className="text-code-md font-code-md text-on-surface-variant line-clamp-2 leading-relaxed">
                   {item.summary}
                 </p>

@@ -1,5 +1,6 @@
 import asyncio
 import random
+from contextlib import asynccontextmanager
 from datetime import date
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select, create_engine, SQLModel
@@ -8,23 +9,38 @@ from typing import List
 from actuai_mock_data.generators.emails import generate_supplier_emails
 from actuai_mock_data.config import settings
 from actuai_mock_data.sap_api.model import (
-    PurchaseOrder, 
-    GoodsReceipt, 
-    ProductionSchedule, 
+    PurchaseOrder,
+    GoodsReceipt,
+    ProductionSchedule,
     QualityNotification
 )
+
+# Cycle de vie 8D condensé d'une FNC (doit rester aligné avec le backend,
+# api/routers/quality.py).
+EIGHT_D_SEQUENCE = ["PENDING", "D3_CONTAINMENT", "D5_CORRECTIVE_ACTION", "D8_CLOSED"]
 
 engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-app = FastAPI(title="SAP BAPI Mock API", description="API factice pour le projet ActuAI")
 
-@app.on_event("startup")
-async def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     create_db_and_tables()
-    asyncio.create_task(periodic_email_sender())
+    sender_task = None
+    if settings.email_send_enabled:
+        sender_task = asyncio.create_task(periodic_email_sender())
+    yield
+    if sender_task is not None:
+        sender_task.cancel()
+
+
+app = FastAPI(
+    title="SAP BAPI Mock API",
+    description="API factice pour le projet ActuAI",
+    lifespan=lifespan,
+)
 
 def get_session():
     with Session(engine) as session:
@@ -82,18 +98,44 @@ def create_quality_notification(notification: QualityNotification, session: Sess
     session.refresh(notification)
     return notification
 
+@app.put("/api/bapi/quality-notifications/{ncr_number}/8d-status")
+def update_8d_status(ncr_number: str, new_status: str, session: Session = Depends(get_session)):
+    """Fait avancer le rapport 8D d'une FNC (Mission 3). SAP reste la source de
+    vérité du statut : le backend écrit ici PUIS met à jour son miroir local."""
+    if new_status not in EIGHT_D_SEQUENCE:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Statut 8D invalide. Attendu : {EIGHT_D_SEQUENCE}",
+        )
+    notification = session.exec(
+        select(QualityNotification).where(QualityNotification.ncr_number == ncr_number)
+    ).first()
+    if not notification:
+        raise HTTPException(status_code=404, detail="FNC introuvable")
+
+    notification.report_8d_status = new_status
+    session.add(notification)
+    session.commit()
+    session.refresh(notification)
+    return {"status": "success", "updated_notification": notification}
+
 # ==========================================
 # GESTION DE LA SIMULATION EN ARRIÈRE-PLAN
 # ==========================================
 
 async def periodic_email_sender():
-    """Boucle infinie qui envoie un email aléatoire de temps en temps."""
-    print("Simulateur d'emails en arrière-plan activé...")
+    """Boucle infinie qui envoie un email aléatoire de temps en temps.
+
+    La cadence est pilotée par EMAIL_SEND_MIN_SECONDS / EMAIL_SEND_MAX_SECONDS
+    (par défaut 90-240 s : assez vivant pour la démo sans saturer les quotas
+    LLM du backend, qui traite chaque email avec de vrais appels NIM).
+    """
+    print("Simulateur d'emails en arrière-plan activé "
+          f"(toutes les {settings.email_send_min_seconds}-{settings.email_send_max_seconds}s)...")
     while True:
-        # Pour ta démo, on génère un délai aléatoire entre 15 et 40 secondes
-        delay = random.randint(15, 40)
+        delay = random.randint(settings.email_send_min_seconds, settings.email_send_max_seconds)
         await asyncio.sleep(delay)
-        
+
         print(f"\n[Auto-Simulation] Génération d'un email spontané après {delay}s...")
         await asyncio.to_thread(generate_supplier_emails, num_emails=1) # On utilise to_thread pour ne pas bloquer le serveur FastAPI
 

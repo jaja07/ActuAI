@@ -211,6 +211,15 @@ class SAPConnector:
         resp.raise_for_status()
         return resp.json()
 
+    # ---- write-back: advance the 8D report status in SAP (Mission 3) -----
+    def push_8d_status(self, ncr_number: str, new_status: str) -> dict:
+        """Push a human-approved 8D status transition back to SAP. SAP stays the
+        source of truth: the ETL mirror re-reads this value on every sync."""
+        url = f"{self.base_url}/api/bapi/quality-notifications/{ncr_number}/8d-status"
+        resp = requests.put(url, params={"new_status": new_status}, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
     # ---- write-back: create a Non-Conformance Report in SAP (Mission 3) --
     def create_quality_notification(self, ncr_number: str, po_number: str, defect_type: str) -> dict:
         """Push a human-approved FNC (Quality Notification) into SAP for ``po_number``."""

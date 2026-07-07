@@ -3,9 +3,9 @@
 #   docker compose up --build
 #
 # Brings up the data layer (PostgreSQL + Qdrant), the simulated SAP ERP
-# (actuai_mock_data) and the orchestrator backend. The React frontend is run
-# on the host with Vite in dev (`npm run dev`), whose proxy forwards /api to the
-# backend published on :8000 — see actuai_frontend/vite.config.js.
+# (actuai_mock_data), the orchestrator backend and the production frontend
+# (nginx serving the built SPA on :3000, reverse-proxying /api to the backend).
+# LLM calls hit NVIDIA NIM for real when USE_MOCK_LLM=false in .env.
 
 services:
   # ----------------------------------------------------
@@ -52,6 +52,7 @@ services:
     container_name: actuai-mock-data
     restart: unless-stopped
     working_dir: /app
+    env_file: .env
     environment:
       PYTHONPATH: /app
       DATABASE_URL: "sqlite:////app/data/sap_mock.db"
@@ -93,8 +94,8 @@ services:
       MOCK_DOCS_DIR: /app/mock_docs/network_drives/Fournisseurs_Archives
       # Pull from the mock SAP on boot and keep polling.
       ETL_AUTO_START: "true"
-      # Run with deterministic stub LLMs so no Ollama / cloud key is required.
-      USE_MOCK_LLM: "true"
+      # USE_MOCK_LLM flows from .env: false = real NVIDIA NIM calls (default),
+      # true = deterministic stubs (no network / no API key needed).
     depends_on:
       actuai-postgres:
         condition: service_healthy
@@ -104,28 +105,57 @@ services:
       - "8000:8000"
     volumes:
       - mock_output_data:/app/mock_docs:ro
-    # Lets the container reach an Ollama instance running on the host (if used).
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   # ----------------------------------------------------
   # FRONTEND : React Dashboard (Human-in-the-Loop)
+  # Production build served by nginx; /api is reverse-proxied to the backend
+  # (see actuai_frontend/nginx.conf), so the app lives at http://localhost:3000.
   # ----------------------------------------------------
   actuai-frontend:
     build: ./actuai_frontend
     container_name: actuai-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    environment:
-      - VITE_BACKEND_URL=http://actuai-backend:8000
+      - "3000:80"
     depends_on:
       - actuai-backend
+
+  # ----------------------------------------------------
+  # MONITORING : Prometheus + Grafana (optional but wired)
+  # ----------------------------------------------------
+  actuai-prometheus:
+    image: prom/prometheus:latest
+    container_name: actuai-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - actuai-backend
+
+  actuai-grafana:
+    image: grafana/grafana:latest
+    container_name: actuai-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - actuai-prometheus
 
 volumes:
   # Déclaration des volumes nommés pour la persistance des données
   # Si tu coupes les conteneurs, les données ne seront pas perdues
+  # NB : le seeder du mock SAP drop + recrée sa base SQLite à chaque démarrage
+  # du conteneur actuai-mock-data (comportement accepté pour la démo).
   postgres_data:
   qdrant_data:
   mock_sqlite_data:
   mock_output_data:
+  grafana_data:

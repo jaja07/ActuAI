@@ -5,7 +5,7 @@ import AogAlertView from './AogAlertView';
 import RagSynthesisView from './RagSynthesisView';
 import FncCreationView from './FncCreationView';
 import TraceabilityView from './TraceabilityView';
-import { ShieldCheck, ServerCrash } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 
 interface TaskDetailsPaneProps {
   activeViewId: ViewType;
@@ -36,9 +36,9 @@ export default function TaskDetailsPane({
           default:
             return (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-on-surface-variant font-sans">
-                <ServerCrash className="w-12 h-12 text-[#76777d]/50 mb-3 animate-pulse" />
+                <Inbox className="w-12 h-12 opacity-40 mb-3" />
                 <h3 className="font-semibold text-body-lg text-on-surface">No Item Loaded</h3>
-                <p className="text-xs text-[#76777d] mt-1">Select a validation task from the inbox registry list to begin.</p>
+                <p className="text-xs mt-1">Select a validation task from the inbox to begin.</p>
               </div>
             );
         }

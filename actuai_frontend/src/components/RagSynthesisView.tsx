@@ -106,7 +106,7 @@ export default function RagSynthesisView({ onStatusChange, activeTask }: RagSynt
       <div className="p-6 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-start gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-label-md font-label-md text-primary bg-primary/10 px-2.5 py-1 rounded font-bold font-mono">
+            <span className="text-label-md font-label-md text-on-primary-container bg-primary-container px-2.5 py-1 rounded font-bold font-mono">
               {activeTask ? `TASK #${activeTask.id}` : 'RAG'}
             </span>
             <span className="text-label-md font-label-md text-on-surface-variant font-semibold">
@@ -122,8 +122,10 @@ export default function RagSynthesisView({ onStatusChange, activeTask }: RagSynt
           <button
             onClick={handlePublish}
             disabled={isPublished || !activeTask}
-            className={`px-4 py-2 text-on-primary rounded-DEFAULT font-label-md text-label-md transition-all flex items-center gap-2 shadow-sm font-semibold cursor-pointer disabled:opacity-60 ${
-              isPublished ? 'bg-emerald-600' : 'bg-primary hover:bg-primary/95 hover:scale-[1.01]'
+            className={`px-4 py-2 rounded font-label-md text-label-md transition-all flex items-center gap-2 shadow-sm font-semibold cursor-pointer disabled:opacity-60 ${
+              isPublished
+                ? 'bg-status-success-bg text-status-success'
+                : 'bg-primary text-on-primary hover:opacity-90 hover:scale-[1.01]'
             }`}
           >
             {isPublished ? (
@@ -132,7 +134,7 @@ export default function RagSynthesisView({ onStatusChange, activeTask }: RagSynt
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-inverse-primary" /> Validate Answer
+                <Sparkles className="w-4 h-4" /> Validate Answer
               </>
             )}
           </button>
@@ -155,15 +157,15 @@ export default function RagSynthesisView({ onStatusChange, activeTask }: RagSynt
                 className={`flex gap-4 animate-fade-in ${isAI ? 'justify-start' : 'justify-end flex-row-reverse'}`}
               >
                 <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-1 font-semibold ${
-                  isAI ? 'bg-primary text-on-primary border border-outline' : 'bg-secondary text-white'
+                  isAI ? 'bg-primary text-on-primary' : 'bg-secondary text-on-secondary'
                 }`}>
-                  {isAI ? <Bot className="w-4 h-4 text-inverse-primary" /> : <User className="w-4 h-4" />}
+                  {isAI ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                 </div>
 
                 <div className={`max-w-[85%] rounded-lg p-5 shadow-xs border ${
                   isAI
                     ? 'bg-surface-container-lowest border-outline-variant text-on-surface'
-                    : 'bg-primary text-white border-primary border-r-4'
+                    : 'bg-primary text-on-primary border-primary'
                 }`}>
                   <p className="text-body-md leading-relaxed whitespace-pre-wrap">{message.text}</p>
 
@@ -187,8 +189,8 @@ export default function RagSynthesisView({ onStatusChange, activeTask }: RagSynt
 
           {isTyping && (
             <div className="flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center mt-1 border border-outline">
-                <Bot className="w-4 h-4 text-inverse-primary animate-spin" />
+              <div className="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center mt-1">
+                <Bot className="w-4 h-4 text-on-primary animate-spin" />
               </div>
               <div className="bg-surface-container-lowest border border-outline-variant rounded-lg px-5 py-3 shadow-xs">
                 <div className="flex items-center gap-1.5 py-1">

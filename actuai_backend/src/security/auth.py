@@ -99,14 +99,14 @@ def authenticate_user(session: Session, username: str, password: str) -> TokenUs
 
 def create_access_token(user: TokenUser) -> str:
     """Build a signed JWT carrying the user's claims and an expiry."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(hours=8)
     payload = {
         "sub": user.username,
         "role": user.role.value,
         "clearance": user.clearance,
         "exp": expire,
     }
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> TokenUser:
@@ -121,7 +121,7 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> TokenUser
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
     except jwt.PyJWTError:
         raise credentials_error
     username = payload.get("sub")

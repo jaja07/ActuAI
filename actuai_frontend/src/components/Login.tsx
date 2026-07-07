@@ -62,19 +62,19 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white border border-outline-variant rounded-lg p-8 shadow-2xl relative">
+      <div className="max-w-md w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-8 shadow-2xl relative">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 text-primary">
+          <div className="w-16 h-16 bg-primary-container rounded-full flex items-center justify-center mb-4 text-on-primary-container">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h1 className="text-display-sm font-bold text-on-surface">ActuAI Portal</h1>
+          <h1 className="text-headline-md font-bold text-on-surface">ActuAI Portal</h1>
           <p className="text-on-surface-variant text-body-md mt-2 text-center">
             {isRegistering ? 'Create a new account' : 'Human-in-the-Loop Validation Dashboard'}
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-error-container text-on-error-container rounded text-body-sm font-medium">
+          <div className="mb-6 p-3 bg-error-container text-on-error-container rounded text-body-md font-medium">
             {error}
           </div>
         )}
@@ -88,7 +88,7 @@ export default function Login() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full border border-outline rounded p-3 text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              className="w-full border border-outline rounded p-3 text-body-md bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
               placeholder="e.g. expert"
               required
             />
@@ -102,7 +102,7 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-outline rounded p-3 text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              className="w-full border border-outline rounded p-3 text-body-md bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
               placeholder="••••••••"
               required
             />
@@ -116,7 +116,7 @@ export default function Login() {
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full border border-outline rounded p-3 text-body-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                className="w-full border border-outline rounded p-3 text-body-md bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
               >
                 <option value="engineer">Engineer</option>
                 <option value="buyer">Buyer</option>
@@ -130,7 +130,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-white p-3 rounded font-bold mt-4 hover:bg-primary/90 transition-colors flex justify-center items-center gap-2 disabled:opacity-70"
+            className="w-full bg-primary text-on-primary p-3 rounded font-bold mt-4 hover:opacity-90 transition-colors flex justify-center items-center gap-2 disabled:opacity-70"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isRegistering ? 'Create Account' : 'Authenticate')}
           </button>

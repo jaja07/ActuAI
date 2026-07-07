@@ -1,69 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Layout from './Layout';
 import InboxList from './InboxList';
 import TaskDetailsPane from './TaskDetailsPane';
-import { ViewType, InboxItem, ValidationTask } from '../types';
-import { Sparkles, ClipboardList, Database, CheckSquare, Plus, X, RefreshCw, LogOut } from 'lucide-react';
+import QualityView from './QualityView';
+import DocumentsView from './DocumentsView';
+import { ViewType, InboxItem, ValidationTask, TabId } from '../types';
+import { ClipboardList, Plus, X, ArrowLeft } from 'lucide-react';
 import { fetchWithAuth } from '../api';
-import { useAuth } from '../AuthContext';
+
+const POLL_INTERVAL_MS = 20_000;
+
+function taskToViewId(task: ValidationTask): ViewType {
+  if (task.kind === 'RAG_ANSWER') return 'rag';
+  if (task.kind === 'CREATE_FNC') return 'fnc';
+  if (task.kind === 'TRACEABILITY_DOSSIER') return 'traceability';
+  if (task.kind === 'AOG_ALERT' || task.mission === 'M2') return 'aog';
+  return 'sap';
+}
 
 export default function Dashboard() {
   const [activeViewId, setActiveViewId] = useState<ViewType>('sap');
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('inbox');
+  const [activeTab, setActiveTab] = useState<TabId>('inbox');
   const [notification, setNotification] = useState<{ message: string; success: boolean } | null>(null);
+  const [showDetailMobile, setShowDetailMobile] = useState(false);
 
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
-  const { logout } = useAuth();
+  const fetchingRef = useRef(false);
 
   const fetchTasks = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoadingTasks(true);
     try {
       const response = await fetchWithAuth('/tasks');
       const tasks: ValidationTask[] = await response.json();
-      
+
       const mappedItems: InboxItem[] = tasks.map(task => {
-        const isSpecialType = task.kind === 'AOG_ALERT' || task.mission === 'M2';
-        let statusLabel = 'PENDING HUMAN REVIEW';
-        let colorTag = 'text-[#854d0e]';
-        let bgTag = 'bg-[#fef08a]';
-        let dotTag = 'bg-[#eab308]';
-
-        if (isSpecialType) {
-          statusLabel = 'URGENT REVIEW';
-          colorTag = 'text-on-error-container';
-          bgTag = 'bg-error-container';
-          dotTag = 'bg-error';
-        }
-
-        // Determine viewId based on task kind or payload
-        let viewId: ViewType = 'sap';
-        if (task.kind === 'RAG_ANSWER') {
-          viewId = 'rag';
-        } else if (task.kind === 'CREATE_FNC') {
-          viewId = 'fnc';
-        } else if (task.kind === 'TRACEABILITY_DOSSIER') {
-          viewId = 'traceability';
-        } else if (isSpecialType) {
-          viewId = 'aog';
-        }
-
-        // Fallback title/code
-        let code = task.payload?.serial_number || task.payload?.po_number || task.payload?.ncr_number || `TASK-${task.id}`;
-        let title = task.kind.replace('_', ' ');
-
+        const viewId = taskToViewId(task);
+        const urgent = viewId === 'aog';
         return {
           id: `task-${task.id}`,
           viewId,
-          code,
-          title,
+          code: task.payload?.serial_number || task.payload?.po_number || task.payload?.ncr_number || `TASK-${task.id}`,
+          title: task.kind.replace(/_/g, ' '),
           summary: task.summary || 'No summary provided',
-          status: statusLabel,
-          statusColor: colorTag,
-          statusBg: bgTag,
-          statusDot: dotTag,
+          status: urgent ? 'URGENT REVIEW' : 'PENDING HUMAN REVIEW',
+          statusTone: urgent ? 'urgent' : 'pending',
           time: new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           originalTask: task
         };
@@ -73,19 +58,37 @@ export default function Dashboard() {
     } catch (err: any) {
       triggerNotification(`Failed to fetch tasks: ${err.message}`, false);
     } finally {
+      fetchingRef.current = false;
       setLoadingTasks(false);
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchTasks();
+    // Lightweight polling keeps the queue live as the mock service pushes
+    // emails to the backend in the background.
+    const interval = setInterval(fetchTasks, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, []);
+
+  // Tab-scoped inbox: the sidebar tabs really filter the queue.
+  const tabItems = useMemo(() => {
+    if (activeTab === 'aog') return inboxItems.filter(i => i.viewId === 'aog');
+    if (activeTab === 'traceability') return inboxItems.filter(i => i.viewId === 'traceability' || i.viewId === 'rag');
+    return inboxItems;
+  }, [inboxItems, activeTab]);
+
+  const tabCounts: Partial<Record<TabId, number>> = useMemo(() => ({
+    inbox: inboxItems.length,
+    aog: inboxItems.filter(i => i.viewId === 'aog').length,
+    traceability: inboxItems.filter(i => i.viewId === 'traceability' || i.viewId === 'rag').length,
+  }), [inboxItems]);
 
   // "Simulate trigger" modal: posts a real email to the backend ingestion
   // endpoint, which runs one full Supervisor -> worker -> HITL cycle.
   const [showInspectionModal, setShowInspectionModal] = useState(false);
   const [newSender, setNewSender] = useState('logistique@safran.com');
-  const [newSubject, setNewSubject] = useState("Retard de livraison");
+  const [newSubject, setNewSubject] = useState('Retard de livraison');
   const [newBody, setNewBody] = useState('');
   const [submittingTrigger, setSubmittingTrigger] = useState(false);
 
@@ -123,83 +126,93 @@ export default function Dashboard() {
     }
   };
 
+  const isTaskTab = activeTab === 'inbox' || activeTab === 'aog' || activeTab === 'traceability';
+
   return (
     <Layout
       activeTab={activeTab}
-      setActiveTab={setActiveTab}
+      setActiveTab={(tab) => {
+        setActiveTab(tab);
+        setShowDetailMobile(false);
+      }}
       onNewInspection={() => setShowInspectionModal(true)}
       searchQuery={searchQuery}
       setSearchQuery={setSearchQuery}
+      tabCounts={tabCounts}
+      pendingCount={inboxItems.length}
+      onRefresh={fetchTasks}
+      refreshing={loadingTasks}
     >
-      {/* Top right actions overlay */}
-      <div className="absolute top-4 right-4 flex gap-2 z-10">
-        <button
-          onClick={fetchTasks}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-outline rounded shadow-sm text-xs font-medium hover:bg-surface-container transition-colors"
-          title="Refresh tasks"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loadingTasks ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-        <button
-          onClick={logout}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-outline rounded shadow-sm text-xs font-medium hover:bg-surface-container text-rose-600 transition-colors"
-          title="Logout"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          Logout
-        </button>
-      </div>
-      {/* Dynamic Inbox items list (Left Panel) and active inspection content (Right Panel) */}
-      <InboxList
-        items={inboxItems}
-        activeItemId={activeItemId}
-        onItemSelect={(item) => {
-          setActiveViewId(item.viewId);
-          setActiveItemId(item.id);
-          triggerNotification(`Loaded operations detail dossier: ${item.viewId.toUpperCase()}`, true);
-        }}
-        searchQuery={searchQuery}
-      />
-
-      {/* Detail Pane Wrapper */}
-      <TaskDetailsPane
-        activeViewId={activeViewId}
-        activeTask={(inboxItems.find(i => i.id === activeItemId) ?? inboxItems.find(i => i.viewId === activeViewId))?.originalTask}
-        onStatusChange={(msg, success) => {
-          triggerNotification(msg, success);
-          if (success) {
-            // Refresh tasks on successful action
-            fetchTasks();
-          }
-        }}
-      />
-
-      {/* Global Toast Banner Logs */}
-      {notification && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-slate-900 border border-outline text-white p-4 rounded shadow-lg animate-fade-in flex flex-col gap-1 transition-all">
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${notification.success ? 'bg-emerald-500' : 'bg-rose-500 animate-ping'}`} />
-            <p className="font-bold text-xs uppercase text-inverse-primary tracking-widest font-mono">System Signal Status</p>
+      {isTaskTab ? (
+        <>
+          {/* Inbox list: full width on mobile (unless a detail is open), left column on lg+ */}
+          <div className={`${showDetailMobile ? 'hidden' : 'flex'} lg:flex w-full lg:w-1/3 lg:min-w-[320px] lg:max-w-[400px] flex-shrink-0 h-full`}>
+            <InboxList
+              items={tabItems}
+              activeItemId={activeItemId}
+              onItemSelect={(item) => {
+                setActiveViewId(item.viewId);
+                setActiveItemId(item.id);
+                setShowDetailMobile(true);
+              }}
+              searchQuery={searchQuery}
+            />
           </div>
-          <p className="text-xs text-on-surface-variant leading-relaxed">
+
+          {/* Detail pane: hidden on mobile until an item is selected */}
+          <div className={`${showDetailMobile ? 'flex' : 'hidden'} lg:flex flex-1 flex-col h-full overflow-hidden`}>
+            {/* Mobile back bar */}
+            <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-outline-variant bg-surface-container-lowest">
+              <button
+                onClick={() => setShowDetailMobile(false)}
+                className="flex items-center gap-1.5 text-primary text-sm font-semibold cursor-pointer p-1 rounded hover:bg-surface-container-low"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to inbox
+              </button>
+            </div>
+            <TaskDetailsPane
+              activeViewId={activeViewId}
+              activeTask={(tabItems.find(i => i.id === activeItemId) ?? inboxItems.find(i => i.id === activeItemId))?.originalTask}
+              onStatusChange={(msg, success) => {
+                triggerNotification(msg, success);
+                if (success) {
+                  fetchTasks();
+                }
+              }}
+            />
+          </div>
+        </>
+      ) : activeTab === 'quality' ? (
+        <QualityView onNotify={triggerNotification} searchQuery={searchQuery} />
+      ) : (
+        <DocumentsView searchQuery={searchQuery} />
+      )}
+
+      {/* Single global toast */}
+      {notification && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-inverse-surface text-inverse-on-surface p-4 rounded-lg shadow-lg animate-fade-in flex flex-col gap-1 transition-all">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${notification.success ? 'bg-status-success' : 'bg-error animate-ping'}`} />
+            <p className="font-bold text-xs uppercase tracking-widest">{notification.success ? 'Success' : 'Attention'}</p>
+          </div>
+          <p className="text-xs leading-relaxed opacity-90">
             {notification.message}
           </p>
         </div>
       )}
 
-      {/* Inspection Creator Modal sheet */}
+      {/* Simulate Email modal */}
       {showInspectionModal && (
-        <div className="bg-primary/20 backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-outline-variant max-w-lg w-full rounded p-6 shadow-2xl relative animate-fade-in font-sans">
-            <button 
+        <div className="bg-inverse-surface/30 backdrop-blur-xs fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant max-w-lg w-full rounded-lg p-6 shadow-2xl relative animate-fade-in font-sans">
+            <button
               onClick={() => setShowInspectionModal(false)}
               className="absolute right-4 top-4 hover:bg-surface-container p-1 rounded-full cursor-pointer text-on-surface"
               aria-label="Close form button"
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className="flex items-center gap-2 mb-4 text-primary">
               <ClipboardList className="w-6 h-6 text-primary" />
               <h3 className="text-title-md font-bold tracking-tight text-on-surface">
@@ -220,7 +233,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  className="w-full border border-outline rounded p-2 text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full border border-outline rounded p-2 text-xs bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="logistique@safran.com"
                   value={newSender}
                   onChange={(e) => setNewSender(e.target.value)}
@@ -234,7 +247,7 @@ export default function Dashboard() {
                 </label>
                 <input
                   type="text"
-                  className="w-full border border-outline rounded p-2 text-xs focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full border border-outline rounded p-2 text-xs bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="Retard de livraison"
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value)}
@@ -247,7 +260,7 @@ export default function Dashboard() {
                   Email Body
                 </label>
                 <textarea
-                  className="w-full border border-outline rounded p-2 text-xs h-28 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full border border-outline rounded p-2 text-xs h-28 bg-surface text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="Suite à un problème de matière première, la livraison de la commande PO-456123 prévue le 10 mai est repoussée au 15 mai."
                   value={newBody}
                   onChange={(e) => setNewBody(e.target.value)}
@@ -266,9 +279,9 @@ export default function Dashboard() {
                 <button
                   type="submit"
                   disabled={submittingTrigger}
-                  className="px-4 py-2 bg-primary text-white rounded font-bold cursor-pointer hover:bg-primary/95 flex items-center gap-1.5 disabled:opacity-60"
+                  className="px-4 py-2 bg-primary text-on-primary rounded font-bold cursor-pointer hover:opacity-90 flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  <Plus className="w-4 h-4 text-white" /> {submittingTrigger ? 'Running agent cycle...' : 'Send to ActuAI'}
+                  <Plus className="w-4 h-4" /> {submittingTrigger ? 'Running agent cycle...' : 'Send to ActuAI'}
                 </button>
               </div>
             </form>

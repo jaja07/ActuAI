@@ -19,15 +19,10 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Locate the workspace-root .env no matter where the process is started from
-# (e.g. `cd actuai_backend/src && uvicorn main:app`). This file lives at
-# actuai_backend/src/config.py, so the repo root is three parents up.
 _ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
-    # Read from the workspace .env and ignore unknown extra keys (the workspace
-    # .env also holds variables for the mock_data member).
     model_config = SettingsConfigDict(
         env_file=(str(_ENV_FILE), ".env"), extra="ignore"
     )
@@ -36,55 +31,40 @@ class Settings(BaseSettings):
     ENV: Literal["dev", "staging", "prod"] = "dev"
     LOG_LEVEL: str = "INFO"
 
-    # ---- Database (the local datalake — PostgreSQL, SYNC driver) ----------
-    # psycopg v3 (sync) is the workspace's chosen driver — psycopg2 crashes with
-    # a UnicodeDecodeError on Windows machines set to a non-English locale.
-    # The variable name matches the team's database/connection.py contract.
     DATABASE_URL_BACKEND: str = (
         "postgresql+psycopg://actuai_user:actuai_password@localhost:5432/actuai_db"
     )
-
-    # ---- Vector database (Qdrant) — used by the RAG / Investigative agent --
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_COLLECTION: str = "technical_documentation"
 
-    # ---- Technical documents indexed by etl/document_indexer.py -----------
-    # Default assumes the process runs from the repo root (local dev). In
-    # Docker this is overridden to the shared volume mount point.
     MOCK_DOCS_DIR: str = "./actuai_mock_data/output/network_drives/Fournisseurs_Archives"
 
-    # ---- Mock SAP / BAPI --------------------------------------------------
-    # The simulated SAP ERP (actuai_mock_data) serves the BAPI under
-    # "<base>/api/bapi/...". The ETL connector adapts to this base URL.
     BAPI_BASE_URL: str = "http://localhost:8080"
-    BAPI_POLL_SECONDS: int = 60          # ETL sync frequency
-    ETL_AUTO_START: bool = False         # start the background ETL poller on boot?
+    BAPI_POLL_SECONDS: int = 60
+    ETL_AUTO_START: bool = False
 
-    # ---- Authentication (JWT) --------------------------------------------
-    # In v1 we sign our own JWTs. In v2 these come from an external IdP (OIDC).
-    # The secret MUST be overridden in prod via the environment.
     JWT_SECRET: str = Field(default="CHANGE_ME_IN_PROD", min_length=8)
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_MINUTES: int = 30       # short-lived access token
-    REFRESH_TOKEN_HOURS: int = 8         # matches the report's 8h MFA window
 
-    # ---- LLM providers ----------------------------------------------------
-    # Local router model (Supervisor) served by Ollama on the edge server.
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    SUPERVISOR_MODEL: str = "llama3.1:8b"
-
-    # Cloud models for the heavy agents. Keys are injected via env, never code.
     CLOUD_LLM_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
-    CLOUD_LLM_API_KEY: str = ""
-    TRANSACTIONAL_MODEL: str = "mistralai/mistral-nemo-12b-instruct"
+    NVIDIA_API_KEY: str = ""
+    SUPERVISOR_MODEL: str = "meta/llama-3.1-8b-instruct"
+    TRANSACTIONAL_MODEL: str = "mistralai/mistral-nemotron"
     INVESTIGATIVE_MODEL: str = "meta/llama-3.1-70b-instruct"
-    RESPONDER_MODEL: str = "mistralai/mistral-nemo-12b-instruct"
+    RESPONDER_MODEL: str = "mistralai/mistral-nemotron"
 
-    # Master switch: when True, agents use deterministic stub LLMs instead of
-    # real ones. Handy for CI and for running with zero external dependencies.
     USE_MOCK_LLM: bool = False
 
-    # ---- CORS -------------------------------------------------------------
+    # Shared secret expected in the X-Webhook-Token header of machine-to-machine
+    # email ingestion calls. Empty string disables the check (dev/tests).
+    WEBHOOK_SHARED_SECRET: str = ""
+
+    # Proactive Mission-2 scan: compare open PO ETAs against assembly-line
+    # drop-dead dates on every ETL tick and raise AOG alerts.
+    AOG_SCAN_ENABLED: bool = True
+
+    # Index the mock technical PDFs into Qdrant at startup (daemon thread).
+    INDEX_DOCS_ON_START: bool = False
+
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost:8080"
 
     @property
@@ -97,6 +77,4 @@ def get_settings() -> Settings:
     """Cached accessor so we build the Settings object only once per process."""
     return Settings()
 
-
-# Importable singleton used across the codebase.
 settings = get_settings()

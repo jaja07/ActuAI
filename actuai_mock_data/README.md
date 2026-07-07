@@ -54,7 +54,7 @@ This project uses **[uv](https://github.com/astral-sh/uv)** as package and virtu
    MOCK_NETWORK_DRIVE_DIR=./actuai_mock_data/output/network_drives
    MOCK_EXCEL_DIR=./actuai_mock_data/output/excel_shares
    DATABASE_URL=sqlite:///./sap_mock.db
-   WEBHOOK_TARGET_URL=http://localhost:8000/api/v1/webhooks/exchange
+   WEBHOOK_TARGET_URL=http://localhost:8000/api/ingest/email
    ```
 
    | Variable | Description |
@@ -143,7 +143,7 @@ docker compose up -d actuai-mock-data
 * The API is exposed on `http://localhost:8080`.
 * The SQLite database is persisted in the named volume `mock_sqlite_data` (mounted at `/app/data`, with `DATABASE_URL` overridden in the compose file to point there) — data survives container restarts/recreations.
 * Generated PDFs/Excel files are persisted in the named volume `mock_output_data` (mounted at `/app/output`), so they are not lost when the container is recreated and can later be shared with `actuai_backend`.
-* The image bakes in default values for `DATABASE_URL`, `MOCK_NETWORK_DRIVE_DIR`, `MOCK_EXCEL_DIR`, and `WEBHOOK_TARGET_URL` (the latter defaults to `http://actuai-backend:8000/api/v1/webhooks/exchange`, anticipating the backend's future service name in the compose network) — all overridable via `environment:`.
+* The image bakes in default values for `DATABASE_URL`, `MOCK_NETWORK_DRIVE_DIR`, `MOCK_EXCEL_DIR`, and `WEBHOOK_TARGET_URL` (the latter defaults to `http://actuai-backend:8000/api/ingest/email`) — all overridable via `environment:`.
 * The seeder and generators are not run automatically; run them inside the running container on demand, e.g.:
 
   ```bash

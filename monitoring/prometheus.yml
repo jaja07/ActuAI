@@ -9,7 +9,7 @@ scrape_configs:
   - job_name: actuai-backend
     metrics_path: /metrics
     static_configs:
-      - targets: ["backend:8000"]   # reached over the private network
+      - targets: ["actuai-backend:8000"]   # compose service name, private network
 
   - job_name: prometheus
     static_configs:

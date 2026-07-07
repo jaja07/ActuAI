@@ -77,13 +77,17 @@ def seed_database():
                 )
                 session.add(receipt)
                 
-                # 20% de chances d'avoir un défaut à la réception (Mission 3)
+                # 20% de chances d'avoir un défaut à la réception (Mission 3).
+                # Le statut suit le cycle 8D condensé du backend :
+                # PENDING -> D3_CONTAINMENT -> D5_CORRECTIVE_ACTION -> D8_CLOSED
                 if random.random() < 0.2:
                     fnc = QualityNotification(
                         ncr_number=f"FNC-26-{fake.unique.random_int(100, 999)}",
                         po_number=po.po_number,
                         defect_type=random.choice(DEFECTS),
-                        report_8d_status=random.choice(["PENDING", "CLOSED"])
+                        report_8d_status=random.choice(
+                            ["PENDING", "D3_CONTAINMENT", "D5_CORRECTIVE_ACTION", "D8_CLOSED"]
+                        )
                     )
                     session.add(fnc)
 

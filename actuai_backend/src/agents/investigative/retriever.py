@@ -114,6 +114,9 @@ class QdrantRetriever(Retriever):
                 "source": meta.get("source", meta.get("file_path", "unknown")),
                 "text": h.page_content,
                 "clearance": clearance,
+                # Mission 4 version control: revision parsed at indexing time.
+                "revision": meta.get("revision"),
+                "doc_type": meta.get("doc_type"),
             })
         return out
 

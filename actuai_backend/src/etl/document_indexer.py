@@ -5,11 +5,18 @@ Loads every PDF under ``settings.MOCK_DOCS_DIR``, splits them into overlapping
 chunks, embeds them locally (no external API call), and (re)creates the Qdrant
 collection the Investigative agent's retriever (agents/investigative/retriever.py)
 reads from.
+
+Mission 4 (documentation control): each chunk carries version-control metadata
+parsed from the filename — ``source``, ``revision`` (the ``_rev{X}`` suffix),
+``doc_type`` and ``indexed_at`` — so answers can cite "Certificat_Matiere ...
+(rev B)" and /api/documents can list the indexed corpus.
 """
 
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -17,6 +24,23 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import settings
 
 MOCK_DOCS_DIR = Path(settings.MOCK_DOCS_DIR)
+
+_REVISION_RE = re.compile(r"_rev([A-Z0-9]+)\.pdf$", re.IGNORECASE)
+
+
+def _doc_metadata(pdf_path: Path) -> dict:
+    """Version-control metadata derived from the file name."""
+    match = _REVISION_RE.search(pdf_path.name)
+    revision = match.group(1).upper() if match else "A"
+    # "Certificat_Matiere_PO-412345_revB.pdf" -> doc_type "Certificat_Matiere"
+    doc_type = pdf_path.stem.split("_PO-")[0]
+    return {
+        "source": pdf_path.name,
+        "revision": revision,
+        "doc_type": doc_type,
+        "indexed_at": datetime.now(timezone.utc).isoformat(),
+        "clearance": "INTERNAL",
+    }
 
 
 def index_technical_documents():
@@ -28,9 +52,12 @@ def index_technical_documents():
         print("   uv run python -m actuai_mock_data.generators.main")
         return
 
-    # PyPDFDirectoryLoader va lire tous les .pdf présents dans le dossier
-    loader = PyPDFDirectoryLoader(str(MOCK_DOCS_DIR))
-    raw_documents = loader.load()
+    raw_documents = []
+    for pdf_path in sorted(MOCK_DOCS_DIR.glob("*.pdf")):
+        metadata = _doc_metadata(pdf_path)
+        for page in PyPDFLoader(str(pdf_path)).load():
+            page.metadata.update(metadata)
+            raw_documents.append(page)
     print(f"{len(raw_documents)} pages chargées depuis les documents techniques.")
 
     print("Étape 2: Découpage du texte (Chunking)...")
